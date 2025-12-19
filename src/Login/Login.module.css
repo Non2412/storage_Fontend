@@ -1,0 +1,38 @@
+.root{
+  width:100%;
+  max-width:480px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  color: #e6eef8;
+  text-align:center;
+}
+.brandArea{ display:flex; flex-direction:column; gap:12px; align-items:center }
+.logoBox{ width:64px; height:64px; background:var(--primary,#137fec); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 8px 30px rgba(19,127,236,0.18) }
+.brandText h1{ margin:0; font-size:28px; font-weight:900 }
+.brandText p{ margin:0; color:#9bb0c6 }
+
+.card{ background:rgba(25,38,51,0.6); border:1px solid #324d67; border-radius:12px; padding:20px }
+.form{ display:flex; flex-direction:column; gap:12px }
+.field{ display:flex; flex-direction:column; gap:6px }
+.label{ color:#fff; font-size:13px; text-align:left }
+.inputWrap{ display:flex; align-items:center; border-radius:8px; overflow:hidden; border:1px solid #324d67; background:#0f161e }
+.prefix{ padding:10px 12px; color:#92adc9; display:flex; align-items:center }
+.input{ flex:1; padding:12px 14px; background:transparent; border:0; color:#e6eef8; outline:0 }
+.suffix{ background:transparent; border:0; color:#92adc9; padding:8px 12px; cursor:pointer }
+
+.rowMeta{ display:flex; justify-content:space-between; align-items:center; font-size:13px }
+.remember{ display:flex; gap:8px; align-items:center; color:#92adc9 }
+.forgot{ color:var(--primary,#137fec); text-decoration:none }
+
+.submit{ margin-top:6px; background:var(--primary,#137fec); color:#fff; padding:12px; border-radius:10px; font-weight:700; border:0; cursor:pointer }
+
+.helper{ color:#9bb0c6; font-size:14px }
+.helper a{ color:#fff }
+
+.footer{ color:#9bb0c6; font-size:12px }
+
+@media (max-width:600px){
+  .brandText h1{ font-size:22px }
+}

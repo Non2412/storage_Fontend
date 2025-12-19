@@ -36,3 +36,9 @@
 @media (max-width:600px){
   .brandText h1{ font-size:22px }
 }
+
+.tabs{ display:flex; gap:8px; margin-bottom:10px }
+.tab{ background:transparent; color:#9bb0c6; padding:8px 12px; border-radius:8px; border:1px solid transparent; cursor:pointer }
+.tabActive{ background:rgba(19,127,236,0.14); color:#e6eef8; padding:8px 12px; border-radius:8px; border:1px solid rgba(19,127,236,0.18); cursor:pointer }
+.msg{ background:rgba(255,255,255,0.03); color:#ffdede; padding:8px 10px; border-radius:8px; margin-bottom:10px; border:1px solid rgba(255,0,0,0.06) }
+

@@ -1,7 +1,32 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import styles from "./dashboard.module.css";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ndr_currentUser");
+      if (!raw) {
+        router.replace("/");
+        return;
+      }
+      const u = JSON.parse(raw);
+      setUserName(u.fullName || u.email || "User");
+    } catch (e) {
+      router.replace("/");
+    }
+  }, [router]);
+
+  function signOut() {
+    localStorage.removeItem("ndr_currentUser");
+    router.replace("/");
+  }
+
   return (
     <div className={styles.appRoot}>
       <aside className={styles.sidebar}>
@@ -11,7 +36,7 @@ export default function DashboardPage() {
               <span className={styles.avatarOnline}></span>
             </div>
             <div className={styles.profileText}>
-              <h1>Commander Rex</h1>
+              <h1>{userName ?? "Commander"}</h1>
               <p>Ops Lead • Tier 1</p>
             </div>
           </div>
@@ -25,7 +50,7 @@ export default function DashboardPage() {
           </nav>
         </div>
         <div className={styles.sidebarFooter}>
-          <button className={styles.signOut}>Sign Out</button>
+          <button className={styles.signOut} onClick={signOut}>Sign Out</button>
         </div>
       </aside>
 

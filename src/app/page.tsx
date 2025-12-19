@@ -23,10 +23,11 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.bgOverlay} />
       {/* render Login component from src/Login */}
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-ignore */}
-      <div style={{ width: "100%", display: "flex", justifyContent: "center", padding: 40 }}>
+      <div style={{ width: "100%", display: "flex", justifyContent: "center", padding: 40, position: 'relative', zIndex: 10 }}>
         {/* lazy import path: ../Login */}
         {/* Use a client-side import of the Login component */}
         {React.createElement(require("../Login").default)}

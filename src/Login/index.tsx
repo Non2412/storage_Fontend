@@ -1,3 +1,8 @@
+"use client";
+
+import React, { useState } from "react";
+import styles from "./Login.module.css";
+
 export default function Login() {
   const [mode, setMode] = useState<"login" | "register">("login");
   // login fields
@@ -87,10 +92,10 @@ export default function Login() {
     <div className={styles.root}>
       <div className={styles.brandArea}>
         <div className={styles.logoBox}>
-          <span className="material-symbols-outlined">emergency_home</span>
+          <span className="material-symbols-outlined">EMH</span>
         </div>
         <div className={styles.brandText}>
-          <h1>ระบบจัดการภัยพิบัติ</h1>
+          <h1>ระบบจัดการแหล่งพักพิง</h1>
           <p>ศูนย์บัญชาการติดตามและกระจายความช่วยเหลือ</p>
         </div>
       </div>
@@ -108,7 +113,7 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>อีเมล</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">email</span></div>
+                <div className={styles.prefix}><span className="material-symbols-outlined">Email</span></div>
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" />
               </div>
             </div>
@@ -116,10 +121,10 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>รหัสผ่าน</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">lock</span></div>
+                <div className={styles.prefix}><span className="material-symbols-outlined">Password</span></div>
                 <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type={show ? "text" : "password"} />
                 <button type="button" className={styles.suffix} onClick={togglePassword} aria-label="toggle">
-                  <span className="material-symbols-outlined">{show ? "visibility_off" : "visibility"}</span>
+                  <span className="material-symbols-outlined">{show ? "ปิดรหัสผ่าน" : "ตรวจสอบ"}</span>
                 </button>
               </div>
             </div>
@@ -136,7 +141,7 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>ชื่อ - นามสกุล</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">badge</span></div>
+                <div className={styles.prefix}><span className="material-symbols-outlined">Name</span></div>
                 <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ นามสกุล" className={styles.input} type="text" />
               </div>
             </div>
@@ -150,14 +155,14 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>รหัสผ่าน</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">lock</span></div>
+                <div className={styles.prefix}><span className="material-symbols-outlined">Password</span></div>
                 <input value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type="password" />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>เบอร์โทร</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">smartphone</span></div>
+                <div className={styles.prefix}><span className="material-symbols-outlined">Number</span></div>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812345678" className={styles.input} type="tel" />
               </div>
             </div>
@@ -177,8 +182,4 @@ export default function Login() {
     </div>
   );
 }
-        <p>© 2024 National Disaster Relief Center. All rights reserved.</p>
-      </footer>
-    </div>
-  );
-}
+

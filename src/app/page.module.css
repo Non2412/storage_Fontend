@@ -120,9 +120,13 @@ a.secondary {
 /* --- New styles for login page --- */
 .bgOverlay{
   position: absolute; inset:0; z-index:0;
-  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD_4v3aDl5G7FCAV4gVM1LyGCDyVmJlCfNp4o7yqbpERztwFc2J5rK60H1__1MwjDsgA5YYMnFvVy21f5Dcv9DVW1jD-dz0PbfHpziLWfgQT9bl-XY_SHzV9yzG_ZKuba55CHZl7B9_ia4-9tEnBh59H8WJSFOkUezyr1seKygFzXEmexuZgwtGMzCpnU7ysTDB32IFHn4i5fTeMqPWw2ejHyhrrViWYGi4Mr4oFoKeU4irYMqf86I-S562ghJ7Z8fnT1D6rkSKmgc');
-  background-size: cover; background-position: center;
-  filter: brightness(0.35) saturate(0.9);
+  /* Gradient + explicit Unsplash image (stable image) as background with fallback */
+    /* Gradient + project-local image (place licensed iStock image at /public/images/istock-bg.jpg) */
+    background-color: #071025; /* fallback color */
+    background-image: linear-gradient(rgba(7,16,37,0.45), rgba(7,16,37,0.45)), url('/images/istock-bg.jpg');
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  min-height: 100vh;
+  filter: saturate(0.95) contrast(0.9);
 }
 
 .container{ position:relative; z-index:10; width:100%; display:flex; align-items:center; justify-content:center; padding:40px 20px }

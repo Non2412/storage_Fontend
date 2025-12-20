@@ -1,140 +1,176 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import styles from "./dashboard.module.css";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from 'react';
+import styles from './dashboard.module.css';
+import { useRouter } from 'next/navigation';
+import AppLayout from '@/components/AppLayout';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [userName, setUserName] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     try {
-      const raw = localStorage.getItem("ndr_currentUser");
+      const raw = localStorage.getItem('ndr_currentUser');
       if (!raw) {
-        router.replace("/");
+        router.replace('/login');
         return;
       }
-      const u = JSON.parse(raw);
-      setUserName(u.fullName || u.email || "User");
-    } catch (e) {
-      router.replace("/");
+    } catch {
+      router.replace('/login');
     }
-  }, [router]);
+  }, [router, isMounted]);
 
   function signOut() {
-    localStorage.removeItem("ndr_currentUser");
-    router.replace("/");
+    localStorage.removeItem('ndr_currentUser');
+    router.replace('/login');
+  }
+
+  if (!isMounted) {
+    return null;
   }
 
   return (
-    <div className={styles.appRoot}>
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarInner}>
-          <div className={styles.profile}>
-            <div className={styles.avatar} aria-hidden style={{backgroundImage: `url(https://lh3.googleusercontent.com/aida-public/AB6AXuBxiLLzTwtd-Xxx4Jj8apumxDf20hnvTL6i40PBnr6HjV7NteFA0SYNsJXHaGEhRxW7k2dRvPf4UA1I01pb44seRutWNeJH8ZFAx9dcVb95TCJZiJcWOBrflCs9qlgw2fe_QCAU-rlncemAMlHZ9dmTTeUmqRPqp7SLe9VEsPhukYQ_mejZ6caFZ95tq550YuRWjP6YjOT53Fro6BqrjRM85efA39OA6OycXr_9O__xvZjVW5XtY-QkMEIrzxariQNONyXX_3Belx4)`}}>
-              <span className={styles.avatarOnline}></span>
-            </div>
-            <div className={styles.profileText}>
-              <h1>{userName ?? "Commander"}</h1>
-              <p>Ops Lead • Tier 1</p>
-            </div>
-          </div>
-
-          <nav className={styles.nav}>
-            <a className={styles.navItemActive} href="#">Dashboard</a>
-            <a className={styles.navItem} href="#">Inventory</a>
-            <a className={styles.navItem} href="#">Shelters</a>
-            <a className={styles.navItem} href="#">Logistics</a>
-            <a className={styles.navItem} href="#">Settings</a>
-          </nav>
-        </div>
-        <div className={styles.sidebarFooter}>
-          <button className={styles.signOut} onClick={signOut}>Sign Out</button>
-        </div>
-      </aside>
-
-      <main className={styles.main}>
+    <AppLayout>
+      <div className={styles.pageWrapper}>
+        {/* Header */}
         <header className={styles.header}>
-          <div className={styles.brand}>Disaster Response <span>Command Center</span></div>
-          <div className={styles.headerActions}>
-            <div className={styles.search}>Search shelters, zones...</div>
-            <div className={styles.icons}>
-              <button className={styles.iconBtn}>🔔</button>
-              <button className={styles.iconBtn}>❓</button>
-            </div>
+          <div>
+            <h1 className={styles.pageTitle}>ศรีสะเกษพร้อม</h1>
+            <p className={styles.pageSubtitle}>ระบบบริหารจัดการสภาวะวิกฤตและภัยพิบัติของจังหวัดศรีสะเกษ</p>
           </div>
+          <button className={styles.headerButton} onClick={signOut}>พนักงาน</button>
         </header>
 
+        {/* Content */}
         <div className={styles.content}>
-          <section className={styles.alertCard}>
-            <div className={styles.alertLeft}>
-              <div className={styles.alertMeta}><strong>Critical</strong> · 12 mins ago</div>
-              <h3>Shelter B (North Zone) at 95% Capacity</h3>
-              <p>Immediate redirection of incoming refugees required. Water supply critically low in Zone 3.</p>
-              <div className={styles.alertActions}>
-                <button className={styles.btnPrimary}>Redirect Convoy</button>
-                <button className={styles.btn}>View Details</button>
+          {/* Top Stats Row */}
+          <div className={styles.statsRow}>
+            <div className={styles.statCardTop}>
+              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16" />
+                  <rect x="3" y="21" width="18" height="2" />
+                </svg>
               </div>
+              <div className={styles.statLabel}>ศูนย์อพยพพักพิง</div>
             </div>
-            <div className={styles.alertMap}></div>
-          </section>
 
-          <section className={styles.statsGrid}>
-            <div className={styles.stat}>
-              <p>Active Shelters</p>
-              <h4>12</h4>
-            </div>
-            <div className={styles.stat}>
-              <p>People Displaced</p>
-              <h4>1,240</h4>
-            </div>
-            <div className={styles.stat}>
-              <p>Supply Kits</p>
-              <h4>850</h4>
-            </div>
-            <div className={styles.stat}>
-              <p>Active Deliveries</p>
-              <h4>8</h4>
-            </div>
-          </section>
-
-          <section className={styles.mainSplit}>
-            <div className={styles.mapCard}>
-              <div className={styles.mapHeader}>Live Operations Map</div>
-              <div className={styles.mapArea}>Map placeholder</div>
-            </div>
-            <aside className={styles.sideCards}>
-              <div className={styles.stockCard}>
-                <h3>Stock Levels</h3>
-                <div className={styles.stockItem}><span>Water (Bottles)</span><strong>24%</strong></div>
-                <div className={styles.bar}><div style={{width: '24%'}} className={styles.barFill}></div></div>
+            <div className={styles.statCardTop}>
+              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)' }}>
+                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
               </div>
-              <div className={styles.fleetCard}>
-                <h3>Logistics Fleet</h3>
-                <div>Active (17) · Idle (3)</div>
-              </div>
-            </aside>
-          </section>
-
-          <section className={styles.tableCard}>
-            <h3>Pending Requests &amp; Activity</h3>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr><th>Request ID</th><th>Shelter / Location</th><th>Type</th><th>Priority</th><th>Status</th><th>Action</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>REQ-2024-001</td><td>Shelter B - North Zone</td><td>Water Supply (500L)</td><td>HIGH</td><td>Pending Approval</td><td>Approve</td></tr>
-                  <tr><td>REQ-2024-002</td><td>Mobile Unit Alpha</td><td>Medical Kits (50x)</td><td>MEDIUM</td><td>Processing</td><td>Details</td></tr>
-                  <tr><td>REQ-2024-003</td><td>Shelter C - East</td><td>Blankets (200x)</td><td>LOW</td><td>Dispatched</td><td>Track</td></tr>
-                </tbody>
-              </table>
+              <div className={styles.statLabel}>ศูนย์พักพิง</div>
             </div>
-          </section>
+
+            <div className={styles.statCardTop}>
+              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #ec4899, #db2777)' }}>
+                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+              </div>
+              <div className={styles.statLabel}>สิ่งของบริจาค</div>
+            </div>
+
+            <div className={styles.statCardTop}>
+              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <div className={styles.statLabel}>คำร้องขอความช่วยเหลือ</div>
+            </div>
+          </div>
+
+          {/* Bottom Detail Cards */}
+          <div className={styles.detailCardsRow}>
+            <div className={styles.detailCard}>
+              <div className={styles.detailCardHeader}>
+                <div className={styles.detailIconWrapper} style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
+                  <svg className={styles.detailIcon} viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2">
+                    <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16" />
+                    <rect x="3" y="21" width="18" height="2" />
+                  </svg>
+                </div>
+                <div className={styles.detailBadge} style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
+                  +17%
+                </div>
+              </div>
+              <div className={styles.detailLabel}>ศูนย์อพยพพักพิงทั้งหมด</div>
+              <div className={styles.detailValue}>24</div>
+              <div className={styles.detailSubtext}>เปิดใช้งาน 18 ศูนย์</div>
+            </div>
+
+            <div className={styles.detailCard}>
+              <div className={styles.detailCardHeader}>
+                <div className={styles.detailIconWrapper} style={{ background: 'rgba(6, 182, 212, 0.1)' }}>
+                  <svg className={styles.detailIcon} viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                </div>
+                <div className={styles.detailBadge} style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
+                  +8%
+                </div>
+              </div>
+              <div className={styles.detailLabel}>ครอบครัวที่เข้าพักทั้งหมด</div>
+              <div className={styles.detailValue}>156</div>
+              <div className={styles.detailSubtext}>เปิดใช้งาน 142 ศูนย์</div>
+            </div>
+
+            <div className={styles.detailCard}>
+              <div className={styles.detailCardHeader}>
+                <div className={styles.detailIconWrapper} style={{ background: 'rgba(236, 72, 153, 0.1)' }}>
+                  <svg className={styles.detailIcon} viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                </div>
+                <div className={styles.detailBadge} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                  +24%
+                </div>
+              </div>
+              <div className={styles.detailLabel}>คำร้องขอความช่วยเหลือ</div>
+              <div className={styles.detailValue}>89</div>
+              <div className={styles.detailSubtext}>รอดำเนินการ 54 รายการ</div>
+            </div>
+
+            <div className={styles.detailCard}>
+              <div className={styles.detailCardHeader}>
+                <div className={styles.detailIconWrapper} style={{ background: 'rgba(100, 116, 139, 0.1)' }}>
+                  <svg className={styles.detailIcon} viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                    <line x1="7" y1="7" x2="7.01" y2="7" />
+                  </svg>
+                </div>
+                <div className={styles.detailTrendIcon}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  </svg>
+                </div>
+              </div>
+              <div className={styles.detailLabel}>ส่งของที่ยอมรับทั้งหมด</div>
+              <div className={styles.detailValue}>
+                <span style={{ fontSize: '20px', color: '#64748b' }}>ว่าง</span>
+                <span style={{ fontSize: '14px', color: '#64748b', marginLeft: '8px' }}>ยัง</span>
+              </div>
+              <div className={styles.detailSubtext}></div>
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
-

@@ -1,0 +1,19 @@
+.appContainer {
+    display: flex;
+    min-height: 100vh;
+    background: #0a0e1a;
+    color: #e5e7eb;
+}
+
+.mainContent {
+    flex: 1;
+    margin-left: 240px;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+    .mainContent {
+        margin-left: 0;
+    }
+}

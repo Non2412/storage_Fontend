@@ -33,12 +33,13 @@ export default function Login() {
     try {
       const raw = localStorage.getItem("ndr_users");
       return raw ? JSON.parse(raw) : [];
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return [];
     }
   }
 
-  function saveUsers(users: any[]) {
+  function saveUsers(users: unknown[]) {
     localStorage.setItem("ndr_users", JSON.stringify(users));
   }
 
@@ -51,7 +52,7 @@ export default function Login() {
     }
     const emailLower = regEmail.trim().toLowerCase();
     const users = getUsers();
-    if (users.find((u: any) => u.email === emailLower)) {
+    if (users.find((user: unknown) => (user as { email: string }).email === emailLower)) {
       setMessage("อีเมลนี้ถูกใช้งานแล้ว");
       return;
     }
@@ -77,7 +78,7 @@ export default function Login() {
     const users = getUsers();
     const emailLower = email.trim().toLowerCase();
     const pwdHash = await hashPassword(password);
-    const user = users.find((u: any) => u.email === emailLower && u.passwordHash === pwdHash);
+    const user = users.find((u: unknown) => (u as { email: string }).email === emailLower && (u as { passwordHash: string }).passwordHash === pwdHash);
     if (!user) {
       setMessage("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       return;

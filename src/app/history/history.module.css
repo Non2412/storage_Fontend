@@ -1,0 +1,238 @@
+/* Page Container */
+.pageContainer {
+    padding: 32px;
+    min-height: 100vh;
+}
+
+/* Header */
+.header {
+    margin-bottom: 24px;
+}
+
+.pageTitle {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #f9fafb;
+}
+
+.pageSubtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+/* Filter Bar */
+.filterBar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+}
+
+.typeFilters {
+    display: flex;
+    gap: 8px;
+}
+
+.typeButton,
+.typeButtonActive {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    color: #9ca3af;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.typeButton:hover {
+    background: #1f2937;
+    color: #e5e7eb;
+}
+
+.typeButtonActive {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.searchBox {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 8px;
+}
+
+.searchBox svg {
+    color: #6b7280;
+}
+
+.searchInput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #e5e7eb;
+    font-size: 14px;
+}
+
+.searchInput::placeholder {
+    color: #6b7280;
+}
+
+/* Timeline */
+.timeline {
+    position: relative;
+}
+
+.timelineItem {
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 24px;
+}
+
+.timelineDot {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid #0a0e1a;
+    z-index: 2;
+}
+
+.timelineLine {
+    position: absolute;
+    left: 7px;
+    top: 24px;
+    width: 2px;
+    height: calc(100% + 24px);
+    background: #374151;
+    z-index: 1;
+}
+
+.activityCard {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.2s ease;
+}
+
+.activityCard:hover {
+    border-color: #4b5563;
+    transform: translateX(4px);
+}
+
+.activityHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.activityType {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.activityTime {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.activityContent {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.activityTitle {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #f9fafb;
+}
+
+.quantity {
+    font-size: 16px;
+    font-weight: 500;
+    color: #9ca3af;
+}
+
+.activityUser {
+    margin: 0;
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.activityDetails {
+    margin: 0;
+    font-size: 14px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.activityStatus {
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.statusApproved {
+    color: #22c55e;
+    font-weight: 500;
+}
+
+.statusPending {
+    color: #f59e0b;
+    font-weight: 500;
+}
+
+/* Empty State */
+.emptyState {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pageContainer {
+        padding: 20px;
+    }
+
+    .filterBar {
+        flex-direction: column;
+    }
+
+    .typeFilters {
+        flex-wrap: wrap;
+    }
+
+    .searchBox {
+        min-width: 100%;
+    }
+
+    .timelineItem {
+        padding-left: 32px;
+    }
+
+    .timelineDot {
+        width: 12px;
+        height: 12px;
+    }
+
+    .timelineLine {
+        left: 5px;
+    }
+}

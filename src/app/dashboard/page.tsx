@@ -42,11 +42,9 @@ export default function DashboardPage() {
           </div>
 
           <nav className={styles.nav}>
-            <a className={styles.navItemActive} href="#">Dashboard</a>
-            <a className={styles.navItem} href="#">Inventory</a>
-            <a className={styles.navItem} href="#">Shelters</a>
-            <a className={styles.navItem} href="#">Logistics</a>
-            <a className={styles.navItem} href="#">Settings</a>
+            <button className={styles.navItemActive} onClick={() => router.push('/inventory')}>Inventory</button>
+            <button className={styles.navItem} onClick={() => router.push('/requests')}>Requests</button>
+            <button className={styles.navItem} onClick={() => router.push('/shelters')}>Shelters</button>
           </nav>
         </div>
         <div className={styles.sidebarFooter}>
@@ -73,11 +71,11 @@ export default function DashboardPage() {
               <h3>Shelter B (North Zone) at 95% Capacity</h3>
               <p>Immediate redirection of incoming refugees required. Water supply critically low in Zone 3.</p>
               <div className={styles.alertActions}>
-                <button className={styles.btnPrimary}>Redirect Convoy</button>
-                <button className={styles.btn}>View Details</button>
+                <button className={styles.btnPrimary} onClick={() => router.push('/requests')}>Redirect Convoy</button>
+                <button className={styles.btn} onClick={() => router.push('/requests/REQ-2024-001')}>View Details</button>
               </div>
             </div>
-            <div className={styles.alertMap}></div>
+            {/* removed image/map placeholder */}
           </section>
 
           <section className={styles.statsGrid}>
@@ -125,9 +123,30 @@ export default function DashboardPage() {
                   <tr><th>Request ID</th><th>Shelter / Location</th><th>Type</th><th>Priority</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
-                  <tr><td>REQ-2024-001</td><td>Shelter B - North Zone</td><td>Water Supply (500L)</td><td>HIGH</td><td>Pending Approval</td><td>Approve</td></tr>
-                  <tr><td>REQ-2024-002</td><td>Mobile Unit Alpha</td><td>Medical Kits (50x)</td><td>MEDIUM</td><td>Processing</td><td>Details</td></tr>
-                  <tr><td>REQ-2024-003</td><td>Shelter C - East</td><td>Blankets (200x)</td><td>LOW</td><td>Dispatched</td><td>Track</td></tr>
+                  <tr>
+                    <td>REQ-2024-001</td>
+                    <td>Shelter B - North Zone</td>
+                    <td>Water Supply (500L)</td>
+                    <td>HIGH</td>
+                    <td>Pending Approval</td>
+                    <td><button className={styles.btn} onClick={() => router.push('/requests/REQ-2024-001')}>Approve</button></td>
+                  </tr>
+                  <tr>
+                    <td>REQ-2024-002</td>
+                    <td>Mobile Unit Alpha</td>
+                    <td>Medical Kits (50x)</td>
+                    <td>MEDIUM</td>
+                    <td>Processing</td>
+                    <td><button className={styles.btn} onClick={() => router.push('/requests/REQ-2024-002')}>Details</button></td>
+                  </tr>
+                  <tr>
+                    <td>REQ-2024-003</td>
+                    <td>Shelter C - East</td>
+                    <td>Blankets (200x)</td>
+                    <td>LOW</td>
+                    <td>Dispatched</td>
+                    <td><button className={styles.btn} onClick={() => router.push('/requests/REQ-2024-003')}>Track</button></td>
+                  </tr>
                 </tbody>
               </table>
             </div>

@@ -65,10 +65,36 @@ export default function InventoryPage() {
   };
 
   const handleSubmitRequest = () => {
-    // TODO: Save request to localStorage or API
-    alert(`ส่งคำขอ ${selectedItem?.name} จำนวน ${requestQuantity} ${selectedItem?.unit} เรียบร้อย`);
-    setShowRequestModal(false);
-    setSelectedItem(null);
+    try {
+      // Get current user
+      const rawUser = localStorage.getItem('ndr_currentUser');
+      const user = rawUser ? JSON.parse(rawUser) : { fullName: 'Unknown User' };
+      const userName = user.fullName || user.email || 'Unknown User';
+
+      // Create new request object
+      const newRequest = {
+        id: Date.now().toString(),
+        type: 'request',
+        itemName: selectedItem?.name || 'Unknown Item',
+        quantity: requestQuantity,
+        unit: selectedItem?.unit || 'ชิ้น',
+        user: userName,
+        timestamp: new Date().toISOString(),
+        details: requestReason || 'ขอเบิกสิ่งของจากคลัง',
+        status: 'รอดำเนินการ'
+      };
+
+      // Save to localStorage
+      const existingRequests = JSON.parse(localStorage.getItem('ems_user_requests') || '[]');
+      localStorage.setItem('ems_user_requests', JSON.stringify([newRequest, ...existingRequests]));
+
+      alert(`ส่งคำขอ ${selectedItem?.name} จำนวน ${requestQuantity} ${selectedItem?.unit} เรียบร้อย`);
+      setShowRequestModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error saving request:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    }
   };
 
   return (

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import styles from "./Login.module.css";
+import { login as apiLogin, register as apiRegister } from "@/lib/api";
 
 export default function Login() {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -10,6 +11,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // register fields
   const [fullName, setFullName] = useState("");
@@ -21,28 +23,6 @@ export default function Login() {
     setShow((s) => !s);
   }
 
-  async function hashPassword(pwd: string) {
-    const enc = new TextEncoder();
-    const data = enc.encode(pwd);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  }
-
-  function getUsers() {
-    try {
-      const raw = localStorage.getItem("ndr_users");
-      return raw ? JSON.parse(raw) : [];
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function saveUsers(users: unknown[]) {
-    localStorage.setItem("ndr_users", JSON.stringify(users));
-  }
-
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
@@ -50,22 +30,34 @@ export default function Login() {
       setMessage("กรุณากรอกข้อมูลให้ครบทุกช่อง");
       return;
     }
-    const emailLower = regEmail.trim().toLowerCase();
-    const users = getUsers();
-    if (users.find((user: unknown) => (user as { email: string }).email === emailLower)) {
-      setMessage("อีเมลนี้ถูกใช้งานแล้ว");
-      return;
+
+    setIsLoading(true);
+    try {
+      const result = await apiRegister({
+        name: fullName.trim(),
+        email: regEmail.trim().toLowerCase(),
+        username: regEmail.split('@')[0],
+        password: regPassword,
+        phone: phone.trim(),
+        role: 'shelter_staff',
+      });
+
+      if (result.success) {
+        setMessage("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
+        // reset register fields and switch to login
+        setFullName("");
+        setRegEmail("");
+        setRegPassword("");
+        setPhone("");
+        setMode("login");
+      } else {
+        setMessage(result.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก");
+      }
+    } catch {
+      setMessage("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsLoading(false);
     }
-    const pwdHash = await hashPassword(regPassword);
-    users.push({ fullName: fullName.trim(), email: emailLower, phone: phone.trim(), passwordHash: pwdHash });
-    saveUsers(users);
-    setMessage("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
-    // reset register fields and switch to login
-    setFullName("");
-    setRegEmail("");
-    setRegPassword("");
-    setPhone("");
-    setMode("login");
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -75,18 +67,22 @@ export default function Login() {
       setMessage("กรุณากรอกอีเมลและรหัสผ่าน");
       return;
     }
-    const users = getUsers();
-    const emailLower = email.trim().toLowerCase();
-    const pwdHash = await hashPassword(password);
-    const user = users.find((u: unknown) => (u as { email: string }).email === emailLower && (u as { passwordHash: string }).passwordHash === pwdHash);
-    if (!user) {
-      setMessage("อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-      return;
+
+    setIsLoading(true);
+    try {
+      const result = await apiLogin(email.trim().toLowerCase(), password);
+      
+      if (result.success && result.data) {
+        // redirect to dashboard
+        window.location.href = "/dashboard";
+      } else {
+        setMessage(result.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
+      }
+    } catch {
+      setMessage("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsLoading(false);
     }
-    // login success
-    localStorage.setItem("ndr_currentUser", JSON.stringify({ email: user.email, fullName: user.fullName }));
-    // redirect to dashboard
-    window.location.href = "/dashboard";
   }
 
   return (
@@ -115,7 +111,7 @@ export default function Login() {
               <label className={styles.label}>อีเมล</label>
               <div className={styles.inputWrap}>
                 <div className={styles.prefix}><span className="material-symbols-outlined">Email</span></div>
-                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" />
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" disabled={isLoading} />
               </div>
             </div>
 
@@ -123,7 +119,7 @@ export default function Login() {
               <label className={styles.label}>รหัสผ่าน</label>
               <div className={styles.inputWrap}>
                 <div className={styles.prefix}><span className="material-symbols-outlined">Password</span></div>
-                <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type={show ? "text" : "password"} />
+                <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type={show ? "text" : "password"} disabled={isLoading} />
                 <button type="button" className={styles.suffix} onClick={togglePassword} aria-label="toggle">
                   <span className="material-symbols-outlined">{show ? "ปิดรหัสผ่าน" : "ตรวจสอบ"}</span>
                 </button>
@@ -135,7 +131,9 @@ export default function Login() {
               <a className={styles.forgot} href="#">ลืมรหัสผ่าน?</a>
             </div>
 
-            <button className={styles.submit} type="submit">เข้าสู่ระบบ</button>
+            <button className={styles.submit} type="submit" disabled={isLoading}>
+              {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            </button>
           </form>
         ) : (
           <form className={styles.form} onSubmit={handleRegister}>
@@ -143,32 +141,34 @@ export default function Login() {
               <label className={styles.label}>ชื่อ - นามสกุล</label>
               <div className={styles.inputWrap}>
                 <div className={styles.prefix}><span className="material-symbols-outlined">Name</span></div>
-                <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ นามสกุล" className={styles.input} type="text" />
+                <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ นามสกุล" className={styles.input} type="text" disabled={isLoading} />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>อีเมล</label>
               <div className={styles.inputWrap}>
                 <div className={styles.prefix}><span className="material-symbols-outlined">email</span></div>
-                <input value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" />
+                <input value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" disabled={isLoading} />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>รหัสผ่าน</label>
               <div className={styles.inputWrap}>
                 <div className={styles.prefix}><span className="material-symbols-outlined">Password</span></div>
-                <input value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type="password" />
+                <input value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type="password" disabled={isLoading} />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>เบอร์โทร</label>
               <div className={styles.inputWrap}>
                 <div className={styles.prefix}><span className="material-symbols-outlined">Number</span></div>
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812345678" className={styles.input} type="tel" />
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812345678" className={styles.input} type="tel" disabled={isLoading} />
               </div>
             </div>
 
-            <button className={styles.submit} type="submit">สมัครสมาชิก</button>
+            <button className={styles.submit} type="submit" disabled={isLoading}>
+              {isLoading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
+            </button>
           </form>
         )}
       </div>

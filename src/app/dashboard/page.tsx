@@ -127,7 +127,7 @@ export default function DashboardPage() {
               </div>
               <div className={styles.detailLabel}>ครอบครัวที่เข้าพักทั้งหมด</div>
               <div className={styles.detailValue}>156</div>
-              <div className={styles.detailSubtext}>เปิดใช้งาน 142 ศูนย์</div>
+              <div className={styles.detailSubtext}>เปิดใช้งาน 140 ศูนย์</div>
             </div>
 
             <div className={styles.detailCard}>

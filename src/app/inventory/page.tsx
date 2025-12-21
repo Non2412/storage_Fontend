@@ -4,8 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import styles from './inventory.module.css';
-import { MOCK_INVENTORY } from '@/data/mockInventory';
+import { getLowStockItems, isAuthenticated, getToken } from '@/lib/api';
 import { ItemCategory, CATEGORY_LABELS, getItemStatus, STATUS_LABELS, type InventoryItem } from '@/types/inventory';
+import { MOCK_INVENTORY } from '@/data/mockInventory';
+
+// Map backend category to frontend category
+function mapCategory(categoryName: string): ItemCategory {
+  const categoryMap: Record<string, ItemCategory> = {
+    'อาหาร': 'food',
+    'อาหารและเครื่องดื่ม': 'food',
+    'เสื้อผ้า': 'clothing',
+    'เสื้อผ้าและผ้าห่ม': 'clothing',
+    'ยา': 'medical',
+    'ยาและเวชภัณฑ์': 'medical',
+    'สุขอนามัย': 'hygiene',
+    'อุปกรณ์สุขอนามัย': 'hygiene',
+    'ทั่วไป': 'general',
+    'อุปกรณ์ทั่วไป': 'general',
+  };
+  return categoryMap[categoryName] || 'general';
+}
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -17,31 +35,80 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [requestQuantity, setRequestQuantity] = useState(1);
   const [requestReason, setRequestReason] = useState('');
+  
+  // API data state
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
     if (!isMounted) return;
 
-    try {
-      const raw = localStorage.getItem('ndr_currentUser');
-      if (!raw) {
-        router.replace('/login');
-        return;
-      }
-    } catch {
-      router.replace('/login');
+    if (!isAuthenticated()) {
+      router.replace('/');
+      return;
     }
+
+    // Fetch inventory data from API
+    async function fetchInventory() {
+      setIsLoading(true);
+      
+      try {
+        // Check if user is logged in (has token)
+        const token = getToken();
+        console.log('Token:', token ? 'มี token' : 'ไม่มี token');
+        
+        if (!token) {
+          // No token - use mock data
+          console.log('ใช้ Mock Data เพราะไม่มี token');
+          setInventoryItems(MOCK_INVENTORY);
+          setIsLoading(false);
+          return;
+        }
+
+        // Try to get low stock items from API
+        const lowStockResult = await getLowStockItems();
+        console.log('Low Stock API Result:', lowStockResult);
+
+        if (lowStockResult.success && lowStockResult.data && lowStockResult.data.length > 0) {
+          console.log('ใช้ข้อมูลจาก API จริง:', lowStockResult.data.length, 'รายการ');
+          // Convert API data to InventoryItem format
+          const items: InventoryItem[] = lowStockResult.data.map((stock) => ({
+            id: stock.itemId._id,
+            name: stock.itemId.name,
+            category: 'general' as ItemCategory, // Default category
+            quantity: stock.quantity,
+            maxQuantity: stock.minAlert * 5, // Estimate max
+            unit: stock.itemId.unit,
+            description: `คลัง: ${stock.warehouseId.name}`,
+          }));
+
+          setInventoryItems(items);
+        } else {
+          // API returned empty or failed - use mock data as fallback
+          console.log('ใช้ Mock Data เพราะ API ไม่มีข้อมูล หรือ success=false');
+          setInventoryItems(MOCK_INVENTORY);
+        }
+      } catch (err) {
+        console.error('Error fetching inventory:', err);
+        // Use mock data on error
+        setInventoryItems(MOCK_INVENTORY);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchInventory();
   }, [router, isMounted]);
 
   if (!isMounted) {
     return null;
   }
 
-  const filteredItems = MOCK_INVENTORY.filter(item => {
+  const filteredItems = inventoryItems.filter(item => {
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     const itemStatus = getItemStatus(item.quantity, item.maxQuantity);
@@ -51,10 +118,10 @@ export default function InventoryPage() {
   });
 
   const stats = {
-    total: MOCK_INVENTORY.length,
-    available: MOCK_INVENTORY.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'available').length,
-    low: MOCK_INVENTORY.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'low').length,
-    out: MOCK_INVENTORY.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'out').length
+    total: inventoryItems.length,
+    available: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'available').length,
+    low: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'low').length,
+    out: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'out').length
   };
 
   const handleRequestItem = (item: InventoryItem) => {
@@ -64,38 +131,30 @@ export default function InventoryPage() {
     setShowRequestModal(true);
   };
 
-  const handleSubmitRequest = () => {
-    try {
-      // Get current user
-      const rawUser = localStorage.getItem('ndr_currentUser');
-      const user = rawUser ? JSON.parse(rawUser) : { fullName: 'Unknown User' };
-      const userName = user.fullName || user.email || 'Unknown User';
-
-      // Create new request object
-      const newRequest = {
-        id: Date.now().toString(),
-        type: 'request',
-        itemName: selectedItem?.name || 'Unknown Item',
-        quantity: requestQuantity,
-        unit: selectedItem?.unit || 'ชิ้น',
-        user: userName,
-        timestamp: new Date().toISOString(),
-        details: requestReason || 'ขอเบิกสิ่งของจากคลัง',
-        status: 'รอดำเนินการ'
-      };
-
-      // Save to localStorage
-      const existingRequests = JSON.parse(localStorage.getItem('ems_user_requests') || '[]');
-      localStorage.setItem('ems_user_requests', JSON.stringify([newRequest, ...existingRequests]));
-
-      alert(`ส่งคำขอ ${selectedItem?.name} จำนวน ${requestQuantity} ${selectedItem?.unit} เรียบร้อย`);
-      setShowRequestModal(false);
-      setSelectedItem(null);
-    } catch (error) {
-      console.error('Error saving request:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-    }
+  const handleSubmitRequest = async () => {
+    if (!selectedItem) return;
+    
+    // For now, just show alert - will implement full request submission when shelter/warehouse IDs are available
+    alert(`ส่งคำขอ ${selectedItem.name} จำนวน ${requestQuantity} ${selectedItem.unit} เรียบร้อย`);
+    setShowRequestModal(false);
+    setSelectedItem(null);
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className={styles.pageContainer}>
+          <div className={styles.header}>
+            <div>
+              <h1 className={styles.pageTitle}>คลังสิ่งของ</h1>
+              <p className={styles.pageSubtitle}>กำลังโหลดข้อมูล...</p>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

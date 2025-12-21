@@ -99,6 +99,8 @@ export default function HistoryPage() {
     const [isMounted, setIsMounted] = useState(false);
     const [typeFilter, setTypeFilter] = useState<'all' | 'request' | 'distribution' | 'receipt'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [historyItems, setHistoryItems] = useState<ActivityLog[]>([]);
+    const [currentUser, setCurrentUser] = useState<string>('');
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -109,12 +111,34 @@ export default function HistoryPage() {
         if (!isMounted) return;
 
         try {
-            const raw = localStorage.getItem('ndr_currentUser');
-            if (!raw) {
+            const rawUser = localStorage.getItem('ndr_currentUser');
+            if (rawUser) {
+                const user = JSON.parse(rawUser);
+                const userName = user.fullName || user.email || '';
+                setCurrentUser(userName);
+
+                // Load requests from localStorage
+                const storedRequests = JSON.parse(localStorage.getItem('ems_user_requests') || '[]');
+
+                // Filter requests for current user
+                // Note: We match loosely on name to cover both "requesterName" from needs form and "user.fullName" from login
+                // Ideally we should use user ID, but for this mock setup name matching is acceptable
+                const userRequests = storedRequests.filter((req: ActivityLog) =>
+                    req.user === userName || req.user.includes(userName) || userName.includes(req.user)
+                );
+
+                // Convert timestamps back to Date objects
+                const formattedRequests = userRequests.map((req: any) => ({
+                    ...req,
+                    timestamp: new Date(req.timestamp)
+                }));
+
+                setHistoryItems(formattedRequests);
+            } else {
                 router.replace('/login');
-                return;
             }
-        } catch {
+        } catch (error) {
+            console.error('Error loading history:', error);
             router.replace('/login');
         }
     }, [router, isMounted]);
@@ -123,7 +147,7 @@ export default function HistoryPage() {
         return null;
     }
 
-    const filteredHistory = MOCK_HISTORY.filter(log => {
+    const filteredHistory = historyItems.filter(log => {
         const matchesType = typeFilter === 'all' || log.type === typeFilter;
         const matchesSearch = log.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             log.user.toLowerCase().includes(searchQuery.toLowerCase());

@@ -51,20 +51,46 @@ export default function NeedsPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Simulate API call
-        console.log('Form submitted:', formData);
-        alert('บันทึกความต้องการเรียบร้อยแล้ว');
-        // Reset form
-        setFormData({
-            title: '',
-            category: 'general',
-            quantity: 1,
-            unit: 'ชิ้น',
-            urgency: 'normal',
-            description: '',
-            requesterName: '',
-            requesterContact: ''
-        });
+
+        try {
+            // Get current user (though requesterName is in form, we might want to ensure consistency or just use form data)
+            // For history consistency, we use the logged in user context if needed, but the form has 'requesterName'.
+            // Let's use the form's requesterName as the 'user' in history.
+
+            const newRequest = {
+                id: Date.now().toString(),
+                type: 'request',
+                itemName: formData.title,
+                quantity: formData.quantity,
+                unit: formData.unit || 'ชิ้น',
+                user: formData.requesterName,
+                timestamp: new Date().toISOString(),
+                details: `${formData.description} (ความเร่งด่วน: ${formData.urgency})`,
+                status: 'รอดำเนินการ'
+            };
+
+            // Save to localStorage
+            const existingRequests = JSON.parse(localStorage.getItem('ems_user_requests') || '[]');
+            localStorage.setItem('ems_user_requests', JSON.stringify([newRequest, ...existingRequests]));
+
+            console.log('Form submitted:', formData);
+            alert('บันทึกความต้องการเรียบร้อยแล้ว');
+
+            // Reset form
+            setFormData({
+                title: '',
+                category: 'general',
+                quantity: 1,
+                unit: 'ชิ้น',
+                urgency: 'normal',
+                description: '',
+                requesterName: '',
+                requesterContact: ''
+            });
+        } catch (error) {
+            console.error('Error saving request:', error);
+            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        }
     };
 
     return (

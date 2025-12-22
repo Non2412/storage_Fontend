@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import styles from './inventory.module.css';
-import { getItems, submitRequest, getCurrentUser, type Item } from '@/lib/api';
+import { getItems, submitRequest, getCurrentUser, getShelters, getWarehouses, getStockStatus, type Item, type Shelter, type StockItem } from '@/lib/api';
 import { ItemCategory, CATEGORY_LABELS, getItemStatus, STATUS_LABELS, type InventoryItem } from '@/types/inventory';
 
 // Map backend Item to frontend InventoryItem
@@ -48,6 +48,8 @@ export default function InventoryPage() {
   const [requestQuantity, setRequestQuantity] = useState(1);
   const [requestReason, setRequestReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [shelters, setShelters] = useState<Shelter[]>([]);
+  const [selectedShelterId, setSelectedShelterId] = useState<string>('');
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -71,25 +73,99 @@ export default function InventoryPage() {
 
     // Load inventory data from API
     loadInventoryData();
+    loadShelters();
   }, [router, isMounted]);
+
+  const loadShelters = async () => {
+    try {
+      const result = await getShelters();
+      if (result.success && result.data) {
+        setShelters(result.data);
+        // Auto-select first shelter if available
+        if (result.data.length > 0) {
+          setSelectedShelterId(result.data[0]._id);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading shelters:', err);
+    }
+  };
 
   const loadInventoryData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getItems();
+      // First, get all warehouses
+      const warehousesResult = await getWarehouses();
+      
+      if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
+        setError('ไม่พบข้อมูลคลังสินค้า');
+        return;
+      }
 
-      if (result.success && result.data) {
-        // Map API items to inventory items
-        // Note: We don't have stock quantities from getItems, so we'll use mock values
-        // In a real scenario, you'd call getStockStatus with a warehouse ID
-        const inventoryItems = result.data.map(item =>
-          mapItemToInventory(item, Math.floor(Math.random() * 200)) // Mock stock for now
-        );
-        setItems(inventoryItems);
+      // Collect stock from all warehouses
+      const allStockItems: Map<string, { item: StockItem; totalQuantity: number; maxQuantity: number }> = new Map();
+
+      for (const warehouse of warehousesResult.data) {
+        const stockResult = await getStockStatus(warehouse._id);
+        
+        if (stockResult.success && stockResult.data && stockResult.data.items) {
+          for (const stockItem of stockResult.data.items) {
+            const existing = allStockItems.get(stockItem.itemId);
+            if (existing) {
+              existing.totalQuantity += stockItem.quantity;
+              existing.maxQuantity += stockItem.minAlert * 3; // Estimate max as 3x minAlert
+            } else {
+              allStockItems.set(stockItem.itemId, {
+                item: stockItem,
+                totalQuantity: stockItem.quantity,
+                maxQuantity: stockItem.minAlert * 3
+              });
+            }
+          }
+        }
+      }
+
+      // Convert to InventoryItem format
+      const inventoryItems: InventoryItem[] = Array.from(allStockItems.values()).map(({ item, totalQuantity, maxQuantity }) => {
+        // Determine category from item name (simple mapping)
+        let category: ItemCategory = 'general';
+        const name = item.itemName.toLowerCase();
+        if (name.includes('ข้าว') || name.includes('น้ำ') || name.includes('นม') || name.includes('อาหาร') || name.includes('rice') || name.includes('water') || name.includes('food') || name.includes('milk') || name.includes('bread') || name.includes('egg')) {
+          category = 'food';
+        } else if (name.includes('เสื้อ') || name.includes('ผ้า') || name.includes('blanket') || name.includes('shirt') || name.includes('pants') || name.includes('clothing')) {
+          category = 'clothing';
+        } else if (name.includes('ยา') || name.includes('พลาส') || name.includes('แอลกอฮอล') || name.includes('medicine') || name.includes('first aid') || name.includes('paracetamol') || name.includes('diarrheal')) {
+          category = 'medical';
+        } else if (name.includes('สบู่') || name.includes('แปรง') || name.includes('soap') || name.includes('toothbrush') || name.includes('towel')) {
+          category = 'hygiene';
+        }
+
+        return {
+          id: item.itemId,
+          name: item.itemName,
+          category,
+          quantity: totalQuantity,
+          maxQuantity: maxQuantity,
+          unit: item.unit,
+          description: `สถานะ: ${item.status === 'normal' ? 'ปกติ' : 'ใกล้หมด'}`
+        };
+      });
+
+      if (inventoryItems.length === 0) {
+        // Fallback to items API if no stock data
+        const itemsResult = await getItems();
+        if (itemsResult.success && itemsResult.data) {
+          const fallbackItems = itemsResult.data.map(item =>
+            mapItemToInventory(item, 0)
+          );
+          setItems(fallbackItems);
+        } else {
+          setError('ไม่พบข้อมูลสินค้า');
+        }
       } else {
-        setError(result.message || 'ไม่สามารถโหลดข้อมูลได้');
+        setItems(inventoryItems);
       }
     } catch (err) {
       console.error('Error loading inventory:', err);
@@ -117,9 +193,15 @@ export default function InventoryPage() {
         return;
       }
 
+      // Validate shelter selection
+      if (!selectedShelterId) {
+        alert('กรุณาเลือกศูนย์พักพิง');
+        return;
+      }
+
       // Submit request via API
       const result = await submitRequest(
-        'default-shelter-id', // You may need to get actual shelter ID from user
+        selectedShelterId,
         [{
           itemId: selectedItem.id,
           quantityRequested: requestQuantity
@@ -382,6 +464,23 @@ export default function InventoryPage() {
               </div>
 
               <div className={styles.modalBody}>
+                <div className={styles.formGroup}>
+                  <label>ศูนย์พักพิง</label>
+                  <select
+                    value={selectedShelterId}
+                    onChange={(e) => setSelectedShelterId(e.target.value)}
+                    className={styles.input}
+                    disabled={submitting}
+                  >
+                    <option value="">-- เลือกศูนย์พักพิง --</option>
+                    {shelters.map((shelter) => (
+                      <option key={shelter._id} value={shelter._id}>
+                        {shelter.name} ({shelter.province})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className={styles.formGroup}>
                   <label>สิ่งของ</label>
                   <input type="text" value={selectedItem.name} disabled className={styles.input} />

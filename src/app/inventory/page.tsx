@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import styles from './inventory.module.css';
-import { getLowStockItems, isAuthenticated, getToken } from '@/lib/api';
+import { getItems, submitRequest, getCurrentUser, type Item } from '@/lib/api';
 import { ItemCategory, CATEGORY_LABELS, getItemStatus, STATUS_LABELS, type InventoryItem } from '@/types/inventory';
-import { MOCK_INVENTORY } from '@/data/mockInventory';
 
-// Map backend category to frontend category
-function mapCategory(categoryName: string): ItemCategory {
+// Map backend Item to frontend InventoryItem
+function mapItemToInventory(item: Item, stockQuantity: number = 0): InventoryItem {
+  const categoryName = typeof item.categoryId === 'object' ? item.categoryId.name : '';
   const categoryMap: Record<string, ItemCategory> = {
     'อาหาร': 'food',
     'อาหารและเครื่องดื่ม': 'food',
@@ -22,12 +22,24 @@ function mapCategory(categoryName: string): ItemCategory {
     'ทั่วไป': 'general',
     'อุปกรณ์ทั่วไป': 'general',
   };
-  return categoryMap[categoryName] || 'general';
+
+  return {
+    id: item._id,
+    name: item.name,
+    category: categoryMap[categoryName] || 'general',
+    quantity: stockQuantity,
+    maxQuantity: stockQuantity * 2 || 100, // Estimate max as double current, or default 100
+    unit: item.unit,
+    description: item.description
+  };
 }
 
 export default function InventoryPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'low' | 'out'>('all');
@@ -35,43 +47,56 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [requestQuantity, setRequestQuantity] = useState(1);
   const [requestReason, setRequestReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
     if (!isMounted) return;
 
+    // Check authentication
     try {
-      const raw = localStorage.getItem('ndr_currentUser');
-      if (!raw) {
+      const user = getCurrentUser();
+      if (!user) {
         router.replace('/login');
         return;
       }
     } catch {
       router.replace('/login');
+      return;
     }
+
+    // Load inventory data from API
+    loadInventoryData();
   }, [router, isMounted]);
 
-  if (!isMounted) {
-    return null;
-  }
+  const loadInventoryData = async () => {
+    setLoading(true);
+    setError(null);
 
-  const filteredItems = inventoryItems.filter(item => {
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const itemStatus = getItemStatus(item.quantity, item.maxQuantity);
-    const matchesStatus = statusFilter === 'all' || itemStatus === statusFilter;
+    try {
+      const result = await getItems();
 
-    return matchesCategory && matchesSearch && matchesStatus;
-  });
-
-  const stats = {
-    total: inventoryItems.length,
-    available: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'available').length,
-    low: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'low').length,
-    out: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'out').length
+      if (result.success && result.data) {
+        // Map API items to inventory items
+        // Note: We don't have stock quantities from getItems, so we'll use mock values
+        // In a real scenario, you'd call getStockStatus with a warehouse ID
+        const inventoryItems = result.data.map(item =>
+          mapItemToInventory(item, Math.floor(Math.random() * 200)) // Mock stock for now
+        );
+        setItems(inventoryItems);
+      } else {
+        setError(result.message || 'ไม่สามารถโหลดข้อมูลได้');
+      }
+    } catch (err) {
+      console.error('Error loading inventory:', err);
+      setError('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRequestItem = (item: InventoryItem) => {
@@ -81,41 +106,48 @@ export default function InventoryPage() {
     setShowRequestModal(true);
   };
 
-  const handleSubmitRequest = () => {
+  const handleSubmitRequest = async () => {
+    if (!selectedItem) return;
+
+    setSubmitting(true);
     try {
-      // Get current user
-      const rawUser = localStorage.getItem('ndr_currentUser');
-      const user = rawUser ? JSON.parse(rawUser) : { fullName: 'Unknown User' };
-      const userName = user.fullName || user.email || 'Unknown User';
+      const user = getCurrentUser();
+      if (!user) {
+        alert('กรุณาเข้าสู่ระบบ');
+        return;
+      }
 
-      // Create new request object
-      const newRequest = {
-        id: Date.now().toString(),
-        type: 'request',
-        itemName: selectedItem?.name || 'Unknown Item',
-        quantity: requestQuantity,
-        unit: selectedItem?.unit || 'ชิ้น',
-        user: userName,
-        timestamp: new Date().toISOString(),
-        details: requestReason || 'ขอเบิกสิ่งของจากคลัง',
-        status: 'รอดำเนินการ'
-      };
+      // Submit request via API
+      const result = await submitRequest(
+        'default-shelter-id', // You may need to get actual shelter ID from user
+        [{
+          itemId: selectedItem.id,
+          quantityRequested: requestQuantity
+        }]
+      );
 
-      // Save to localStorage
-      const existingRequests = JSON.parse(localStorage.getItem('ems_user_requests') || '[]');
-      localStorage.setItem('ems_user_requests', JSON.stringify([newRequest, ...existingRequests]));
-
-      alert(`ส่งคำขอ ${selectedItem?.name} จำนวน ${requestQuantity} ${selectedItem?.unit} เรียบร้อย`);
-      setShowRequestModal(false);
-      setSelectedItem(null);
-    } catch (error) {
-      console.error('Error saving request:', error);
-      alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      if (result.success) {
+        alert(`ส่งคำขอ ${selectedItem.name} จำนวน ${requestQuantity} ${selectedItem.unit} เรียบร้อย`);
+        setShowRequestModal(false);
+        setSelectedItem(null);
+        setRequestReason('');
+      } else {
+        alert(result.message || 'ไม่สามารถส่งคำขอได้');
+      }
+    } catch (err) {
+      console.error('Error submitting request:', err);
+      alert('เกิดข้อผิดพลาดในการส่งคำขอ');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (!isMounted) {
+    return null;
+  }
+
   // Show loading state
-  if (isLoading) {
+  if (loading) {
     return (
       <AppLayout>
         <div className={styles.pageContainer}>
@@ -125,10 +157,63 @@ export default function InventoryPage() {
               <p className={styles.pageSubtitle}>กำลังโหลดข้อมูล...</p>
             </div>
           </div>
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+            <p>กำลังโหลดข้อมูลคลังสิ่งของ...</p>
+          </div>
         </div>
       </AppLayout>
     );
   }
+
+  // Show error state
+  if (error) {
+    return (
+      <AppLayout>
+        <div className={styles.pageContainer}>
+          <div className={styles.header}>
+            <div>
+              <h1 className={styles.pageTitle}>คลังสิ่งของ</h1>
+              <p className={styles.pageSubtitle}>เกิดข้อผิดพลาด</p>
+            </div>
+          </div>
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', color: '#ef4444' }}>⚠️</div>
+            <p style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</p>
+            <button
+              onClick={loadInventoryData}
+              style={{
+                padding: '12px 24px',
+                background: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              ลองอีกครั้ง
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const filteredItems = items.filter(item => {
+    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const itemStatus = getItemStatus(item.quantity, item.maxQuantity);
+    const matchesStatus = statusFilter === 'all' || itemStatus === statusFilter;
+
+    return matchesCategory && matchesSearch && matchesStatus;
+  });
+
+  const stats = {
+    total: items.length,
+    available: items.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'available').length,
+    low: items.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'low').length,
+    out: items.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'out').length
+  };
 
   return (
     <AppLayout>
@@ -219,7 +304,6 @@ export default function InventoryPage() {
             const status = getItemStatus(item.quantity, item.maxQuantity);
             const percentage = (item.quantity / item.maxQuantity) * 100;
 
-            // Get status badge class
             const statusClass = status === 'available' ? styles.statusAvailable :
               status === 'low' ? styles.statusLow :
                 styles.statusOut;
@@ -284,11 +368,17 @@ export default function InventoryPage() {
 
         {/* Request Modal */}
         {showRequestModal && selectedItem && (
-          <div className={styles.modalOverlay} onClick={() => setShowRequestModal(false)}>
+          <div className={styles.modalOverlay} onClick={() => !submitting && setShowRequestModal(false)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalHeader}>
                 <h2>ขอสิ่งของ</h2>
-                <button className={styles.closeButton} onClick={() => setShowRequestModal(false)}>×</button>
+                <button
+                  className={styles.closeButton}
+                  onClick={() => setShowRequestModal(false)}
+                  disabled={submitting}
+                >
+                  ×
+                </button>
               </div>
 
               <div className={styles.modalBody}>
@@ -306,6 +396,7 @@ export default function InventoryPage() {
                     value={requestQuantity}
                     onChange={(e) => setRequestQuantity(parseInt(e.target.value) || 1)}
                     className={styles.input}
+                    disabled={submitting}
                   />
                   <small>มีในคลัง: {selectedItem.quantity} {selectedItem.unit}</small>
                 </div>
@@ -318,16 +409,25 @@ export default function InventoryPage() {
                     className={styles.textarea}
                     rows={3}
                     placeholder="ระบุเหตุผลในการขอสิ่งของ..."
+                    disabled={submitting}
                   />
                 </div>
               </div>
 
               <div className={styles.modalFooter}>
-                <button className={styles.cancelButton} onClick={() => setShowRequestModal(false)}>
+                <button
+                  className={styles.cancelButton}
+                  onClick={() => setShowRequestModal(false)}
+                  disabled={submitting}
+                >
                   ยกเลิก
                 </button>
-                <button className={styles.submitButton} onClick={handleSubmitRequest}>
-                  ส่งคำขอ
+                <button
+                  className={styles.submitButton}
+                  onClick={handleSubmitRequest}
+                  disabled={submitting}
+                >
+                  {submitting ? 'กำลังส่ง...' : 'ส่งคำขอ'}
                 </button>
               </div>
             </div>

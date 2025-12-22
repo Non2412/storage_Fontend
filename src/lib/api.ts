@@ -209,6 +209,21 @@ export async function getShelters(province?: string): Promise<ApiResponse<Shelte
   return apiCall<Shelter[]>(url);
 }
 
+// ==================== Warehouses API ====================
+
+export interface Warehouse {
+  _id: string;
+  name: string;
+  province: string;
+  address: string;
+  managerName: string;
+  phone: string;
+}
+
+export async function getWarehouses(): Promise<ApiResponse<Warehouse[]>> {
+  return apiCall<Warehouse[]>('/api/warehouses');
+}
+
 // ==================== Items/Stocks API ====================
 
 export interface StockItem {
@@ -223,8 +238,15 @@ export interface StockItem {
   warehouseName: string;
 }
 
-export async function getStockStatus(warehouseId: string): Promise<ApiResponse<StockItem[]>> {
-  return apiCall<StockItem[]>(`/api/dashboard/stock-status?warehouseId=${warehouseId}`);
+export interface StockStatusResponse {
+  warehouseName: string;
+  totalItems: number;
+  lowStockItems: number;
+  items: StockItem[];
+}
+
+export async function getStockStatus(warehouseId: string): Promise<ApiResponse<StockStatusResponse>> {
+  return apiCall<StockStatusResponse>(`/api/dashboard/stock-status?warehouseId=${warehouseId}`);
 }
 
 export interface LowStockItem {

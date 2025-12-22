@@ -4,19 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import styles from './needs.module.css';
+import { getItems, getShelters, submitRequest, getCurrentUser, type Item, type Shelter } from '@/lib/api';
 
 export default function NeedsPage() {
     const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [items, setItems] = useState<Item[]>([]);
+    const [shelters, setShelters] = useState<Shelter[]>([]);
     const [formData, setFormData] = useState({
-        title: '',
-        category: 'general',
+        shelterId: '',
+        itemId: '',
         quantity: 1,
-        unit: 'ชิ้น',
         urgency: 'normal',
-        description: '',
-        requesterName: '',
-        requesterContact: ''
+        description: ''
     });
 
     useEffect(() => {
@@ -26,16 +28,43 @@ export default function NeedsPage() {
 
     useEffect(() => {
         if (!isMounted) return;
+
         try {
-            const raw = localStorage.getItem('ndr_currentUser');
-            if (!raw) {
+            const user = getCurrentUser();
+            if (!user) {
                 router.replace('/login');
                 return;
             }
         } catch {
             router.replace('/login');
+            return;
         }
+
+        // Load items and shelters
+        loadFormData();
     }, [router, isMounted]);
+
+    const loadFormData = async () => {
+        setLoading(true);
+        try {
+            const [itemsResult, sheltersResult] = await Promise.all([
+                getItems(),
+                getShelters()
+            ]);
+
+            if (itemsResult.success && itemsResult.data) {
+                setItems(itemsResult.data);
+            }
+
+            if (sheltersResult.success && sheltersResult.data) {
+                setShelters(sheltersResult.data);
+            }
+        } catch (err) {
+            console.error('Error loading form data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (!isMounted) {
         return null;
@@ -45,196 +74,186 @@ export default function NeedsPage() {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: name === 'quantity' ? parseInt(value) || 1 : value
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!formData.shelterId || !formData.itemId || formData.quantity < 1) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        setSubmitting(true);
         try {
-            // Get current user (though requesterName is in form, we might want to ensure consistency or just use form data)
-            // For history consistency, we use the logged in user context if needed, but the form has 'requesterName'.
-            // Let's use the form's requesterName as the 'user' in history.
+            const result = await submitRequest(
+                formData.shelterId,
+                [{
+                    itemId: formData.itemId,
+                    quantityRequested: formData.quantity
+                }]
+            );
 
-            const newRequest = {
-                id: Date.now().toString(),
-                type: 'request',
-                itemName: formData.title,
-                quantity: formData.quantity,
-                unit: formData.unit || 'ชิ้น',
-                user: formData.requesterName,
-                timestamp: new Date().toISOString(),
-                details: `${formData.description} (ความเร่งด่วน: ${formData.urgency})`,
-                status: 'รอดำเนินการ'
-            };
+            if (result.success) {
+                alert('บันทึกความต้องการเรียบร้อยแล้ว');
 
-            // Save to localStorage
-            const existingRequests = JSON.parse(localStorage.getItem('ems_user_requests') || '[]');
-            localStorage.setItem('ems_user_requests', JSON.stringify([newRequest, ...existingRequests]));
-
-            console.log('Form submitted:', formData);
-            alert('บันทึกความต้องการเรียบร้อยแล้ว');
-
-            // Reset form
-            setFormData({
-                title: '',
-                category: 'general',
-                quantity: 1,
-                unit: 'ชิ้น',
-                urgency: 'normal',
-                description: '',
-                requesterName: '',
-                requesterContact: ''
-            });
+                // Reset form
+                setFormData({
+                    shelterId: '',
+                    itemId: '',
+                    quantity: 1,
+                    urgency: 'normal',
+                    description: ''
+                });
+            } else {
+                alert(result.message || 'ไม่สามารถบันทึกข้อมูลได้');
+            }
         } catch (error) {
-            console.error('Error saving request:', error);
+            console.error('Error submitting request:', error);
             alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        } finally {
+            setSubmitting(false);
         }
     };
+
+    if (loading) {
+        return (
+            <AppLayout>
+                <div className={styles.pageContainer}>
+                    <div className={styles.header}>
+                        <h1 className={styles.pageTitle}>แจ้งความต้องการสิ่งของ</h1>
+                        <p className={styles.pageSubtitle}>กำลังโหลดข้อมูล...</p>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout>
             <div className={styles.pageContainer}>
                 <div className={styles.header}>
                     <h1 className={styles.pageTitle}>แจ้งความต้องการสิ่งของ</h1>
-                    <p className={styles.pageSubtitle}>กรอกรายละเอียดสิ่งของที่ต้องการขอความช่วยเหลือ</p>
+                    <p className={styles.pageSubtitle}>กรอกข้อมูลเพื่อขอสิ่งของจากคลัง</p>
                 </div>
 
-                <div className={styles.contentWrapper}>
-                    <form className={styles.formCard} onSubmit={handleSubmit}>
+                <div className={styles.formCard}>
+                    <form onSubmit={handleSubmit}>
+                        {/* Shelter Selection */}
                         <div className={styles.formSection}>
-                            <h2 className={styles.sectionTitle}>รายละเอียดสิ่งของ</h2>
+                            <h3 className={styles.sectionTitle}>ข้อมูลศูนย์พักพิง</h3>
 
                             <div className={styles.formGroup}>
-                                <label htmlFor="title">หัวข้อ / รายการที่ต้องการ <span className={styles.required}>*</span></label>
-                                <input
-                                    type="text"
-                                    id="title"
-                                    name="title"
-                                    value={formData.title}
+                                <label className={styles.label}>
+                                    ศูนย์พักพิง <span className={styles.required}>*</span>
+                                </label>
+                                <select
+                                    name="shelterId"
+                                    value={formData.shelterId}
                                     onChange={handleChange}
-                                    placeholder="เช่น ยาพาราเซตามอล, ข้าวสาร 50 กก."
+                                    className={styles.select}
                                     required
+                                    disabled={submitting}
+                                >
+                                    <option value="">เลือกศูนย์พักพิง</option>
+                                    {shelters.map(shelter => (
+                                        <option key={shelter._id} value={shelter._id}>
+                                            {shelter.name} - {shelter.district}, {shelter.province}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Item Request */}
+                        <div className={styles.formSection}>
+                            <h3 className={styles.sectionTitle}>รายการสิ่งของที่ต้องการ</h3>
+
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>
+                                    สิ่งของ <span className={styles.required}>*</span>
+                                </label>
+                                <select
+                                    name="itemId"
+                                    value={formData.itemId}
+                                    onChange={handleChange}
+                                    className={styles.select}
+                                    required
+                                    disabled={submitting}
+                                >
+                                    <option value="">เลือกสิ่งของ</option>
+                                    {items.map(item => (
+                                        <option key={item._id} value={item._id}>
+                                            {item.name} ({item.unit})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>
+                                    จำนวน <span className={styles.required}>*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    name="quantity"
+                                    value={formData.quantity}
+                                    onChange={handleChange}
                                     className={styles.input}
+                                    min="1"
+                                    required
+                                    disabled={submitting}
                                 />
                             </div>
 
-                            <div className={styles.row}>
-                                <div className={styles.formGroup}>
-                                    <label htmlFor="category">หมวดหมู่</label>
-                                    <select
-                                        id="category"
-                                        name="category"
-                                        value={formData.category}
-                                        onChange={handleChange}
-                                        className={styles.select}
-                                    >
-                                        <option value="food">อาหารและเครื่องดื่ม</option>
-                                        <option value="clothing">เสื้อผ้าและเครื่องนุ่มห่ม</option>
-                                        <option value="medical">ยาและเวชภัณฑ์</option>
-                                        <option value="hygiene">อุปกรณ์สุขอนามัย</option>
-                                        <option value="general">อุปกรณ์ทั่วไป</option>
-                                    </select>
-                                </div>
-
-                                <div className={styles.formGroup}>
-                                    <label htmlFor="urgency">ความเร่งด่วน</label>
-                                    <select
-                                        id="urgency"
-                                        name="urgency"
-                                        value={formData.urgency}
-                                        onChange={handleChange}
-                                        className={styles.select}
-                                    >
-                                        <option value="normal">ปกติ (ภายใน 3-5 วัน)</option>
-                                        <option value="urgent">ด่วน (ภายใน 24 ชม.)</option>
-                                        <option value="critical">ด่วนมาก (ทันที)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className={styles.row}>
-                                <div className={styles.formGroup}>
-                                    <label htmlFor="quantity">จำนวน <span className={styles.required}>*</span></label>
-                                    <input
-                                        type="number"
-                                        id="quantity"
-                                        name="quantity"
-                                        value={formData.quantity}
-                                        onChange={handleChange}
-                                        min="1"
-                                        required
-                                        className={styles.input}
-                                    />
-                                </div>
-
-                                <div className={styles.formGroup}>
-                                    <label htmlFor="unit">หน่วยนับ</label>
-                                    <input
-                                        type="text"
-                                        id="unit"
-                                        name="unit"
-                                        value={formData.unit}
-                                        onChange={handleChange}
-                                        placeholder="เช่น ชิ้น, กล่อง, แพ้ค"
-                                        className={styles.input}
-                                    />
-                                </div>
+                            <div className={styles.formGroup}>
+                                <label className={styles.label}>ความเร่งด่วน</label>
+                                <select
+                                    name="urgency"
+                                    value={formData.urgency}
+                                    onChange={handleChange}
+                                    className={styles.select}
+                                    disabled={submitting}
+                                >
+                                    <option value="low">ต่ำ</option>
+                                    <option value="normal">ปกติ</option>
+                                    <option value="high">สูง</option>
+                                    <option value="urgent">ด่วนมาก</option>
+                                </select>
                             </div>
 
                             <div className={styles.formGroup}>
-                                <label htmlFor="description">รายละเอียดเพิ่มเติม</label>
+                                <label className={styles.label}>รายละเอียดเพิ่มเติม</label>
                                 <textarea
-                                    id="description"
                                     name="description"
                                     value={formData.description}
                                     onChange={handleChange}
-                                    rows={4}
-                                    placeholder="รายละเอียดเพิ่มเติมเกี่ยวกับสิ่งของ สถานที่จัดส่ง หรือข้อมูลอื่นๆ ที่จำเป็น"
                                     className={styles.textarea}
+                                    rows={4}
+                                    placeholder="ระบุรายละเอียดเพิ่มเติม..."
+                                    disabled={submitting}
                                 />
                             </div>
                         </div>
 
-                        <div className={styles.formSection}>
-                            <h2 className={styles.sectionTitle}>ข้อมูลผู้แจ้ง</h2>
-
-                            <div className={styles.row}>
-                                <div className={styles.formGroup}>
-                                    <label htmlFor="requesterName">ชื่อผู้แจ้ง <span className={styles.required}>*</span></label>
-                                    <input
-                                        type="text"
-                                        id="requesterName"
-                                        name="requesterName"
-                                        value={formData.requesterName}
-                                        onChange={handleChange}
-                                        required
-                                        className={styles.input}
-                                    />
-                                </div>
-
-                                <div className={styles.formGroup}>
-                                    <label htmlFor="requesterContact">เบอร์โทรศัพท์ / ช่องทางติดต่อ <span className={styles.required}>*</span></label>
-                                    <input
-                                        type="text"
-                                        id="requesterContact"
-                                        name="requesterContact"
-                                        value={formData.requesterContact}
-                                        onChange={handleChange}
-                                        required
-                                        className={styles.input}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
+                        {/* Actions */}
                         <div className={styles.formActions}>
-                            <button type="button" className={styles.cancelButton} onClick={() => router.back()}>
+                            <button
+                                type="button"
+                                className={styles.cancelButton}
+                                onClick={() => router.back()}
+                                disabled={submitting}
+                            >
                                 ยกเลิก
                             </button>
-                            <button type="submit" className={styles.submitButton}>
-                                บันทึกข้อมูล
+                            <button
+                                type="submit"
+                                className={styles.submitButton}
+                                disabled={submitting}
+                            >
+                                {submitting ? 'กำลังบันทึก...' : 'บันทึกความต้องการ'}
                             </button>
                         </div>
                     </form>

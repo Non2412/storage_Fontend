@@ -6,6 +6,24 @@ import AppLayout from '@/components/AppLayout';
 import styles from './inventory.module.css';
 import { getItems, submitRequest, getCurrentUser, getShelters, getWarehouses, getStockStatus, type Item, type Shelter, type StockItem } from '@/lib/api';
 import { ItemCategory, CATEGORY_LABELS, getItemStatus, STATUS_LABELS, type InventoryItem } from '@/types/inventory';
+import { MOCK_INVENTORY } from '@/data/mockInventory';
+
+// Map backend category to frontend category
+function mapCategory(categoryName: string): ItemCategory {
+  const categoryMap: Record<string, ItemCategory> = {
+    'อาหาร': 'food',
+    'อาหารและเครื่องดื่ม': 'food',
+    'เสื้อผ้า': 'clothing',
+    'เสื้อผ้าและผ้าห่ม': 'clothing',
+    'ยา': 'medical',
+    'ยาและเวชภัณฑ์': 'medical',
+    'สุขอนามัย': 'hygiene',
+    'อุปกรณ์สุขอนามัย': 'hygiene',
+    'ทั่วไป': 'general',
+    'อุปกรณ์ทั่วไป': 'general',
+  };
+  return categoryMap[categoryName] || 'general';
+}
 
 // Map backend Item to frontend InventoryItem
 function mapItemToInventory(item: Item, stockQuantity: number = 0): InventoryItem {
@@ -52,7 +70,6 @@ export default function InventoryPage() {
   const [selectedShelterId, setSelectedShelterId] = useState<string>('');
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 

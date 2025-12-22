@@ -4,8 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import styles from './inventory.module.css';
-import { MOCK_INVENTORY } from '@/data/mockInventory';
+import { getLowStockItems, isAuthenticated, getToken } from '@/lib/api';
 import { ItemCategory, CATEGORY_LABELS, getItemStatus, STATUS_LABELS, type InventoryItem } from '@/types/inventory';
+import { MOCK_INVENTORY } from '@/data/mockInventory';
+
+// Map backend category to frontend category
+function mapCategory(categoryName: string): ItemCategory {
+  const categoryMap: Record<string, ItemCategory> = {
+    'อาหาร': 'food',
+    'อาหารและเครื่องดื่ม': 'food',
+    'เสื้อผ้า': 'clothing',
+    'เสื้อผ้าและผ้าห่ม': 'clothing',
+    'ยา': 'medical',
+    'ยาและเวชภัณฑ์': 'medical',
+    'สุขอนามัย': 'hygiene',
+    'อุปกรณ์สุขอนามัย': 'hygiene',
+    'ทั่วไป': 'general',
+    'อุปกรณ์ทั่วไป': 'general',
+  };
+  return categoryMap[categoryName] || 'general';
+}
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -19,7 +37,6 @@ export default function InventoryPage() {
   const [requestReason, setRequestReason] = useState('');
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
@@ -41,7 +58,7 @@ export default function InventoryPage() {
     return null;
   }
 
-  const filteredItems = MOCK_INVENTORY.filter(item => {
+  const filteredItems = inventoryItems.filter(item => {
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     const itemStatus = getItemStatus(item.quantity, item.maxQuantity);
@@ -51,10 +68,10 @@ export default function InventoryPage() {
   });
 
   const stats = {
-    total: MOCK_INVENTORY.length,
-    available: MOCK_INVENTORY.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'available').length,
-    low: MOCK_INVENTORY.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'low').length,
-    out: MOCK_INVENTORY.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'out').length
+    total: inventoryItems.length,
+    available: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'available').length,
+    low: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'low').length,
+    out: inventoryItems.filter(i => getItemStatus(i.quantity, i.maxQuantity) === 'out').length
   };
 
   const handleRequestItem = (item: InventoryItem) => {
@@ -96,6 +113,22 @@ export default function InventoryPage() {
       alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     }
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className={styles.pageContainer}>
+          <div className={styles.header}>
+            <div>
+              <h1 className={styles.pageTitle}>คลังสิ่งของ</h1>
+              <p className={styles.pageSubtitle}>กำลังโหลดข้อมูล...</p>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

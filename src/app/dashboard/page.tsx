@@ -4,38 +4,65 @@ import React, { useEffect, useState } from 'react';
 import styles from './dashboard.module.css';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
+import { getDashboardOverview, logout, isAuthenticated, getCurrentUser, type DashboardOverview } from '@/lib/api';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardOverview | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState('พนักงาน');
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
   useEffect(() => {
     if (!isMounted) return;
 
-    try {
-      const raw = localStorage.getItem('ndr_currentUser');
-      if (!raw) {
-        router.replace('/login');
-        return;
-      }
-    } catch {
-      router.replace('/login');
+    if (!isAuthenticated()) {
+      router.replace('/');
+      return;
     }
+
+    // Get user name
+    const user = getCurrentUser();
+    if (user) {
+      setUserName(user.name || user.email || 'พนักงาน');
+    }
+
+    // Fetch dashboard data
+    async function fetchDashboard() {
+      setIsLoading(true);
+      try {
+        const result = await getDashboardOverview();
+        if (result.success && result.data) {
+          setDashboardData(result.data);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchDashboard();
   }, [router, isMounted]);
 
   function signOut() {
-    localStorage.removeItem('ndr_currentUser');
-    router.replace('/login');
+    logout();
   }
 
   if (!isMounted) {
     return null;
   }
+
+  // Get stats from API data or use defaults
+  const shelterTotal = dashboardData?.shelters?.total ?? 0;
+  const shelterActive = dashboardData?.shelters?.normal ?? 0;
+  const requestsTotal = dashboardData?.requests?.total ?? 0;
+  const requestsPending = dashboardData?.requests?.pending ?? 0;
+  const requestsApproved = dashboardData?.requests?.approved ?? 0;
 
   return (
     <AppLayout>
@@ -46,7 +73,7 @@ export default function DashboardPage() {
             <h1 className={styles.pageTitle}>ศรีสะเกษพร้อม</h1>
             <p className={styles.pageSubtitle}>ระบบบริหารจัดการสภาวะวิกฤตและภัยพิบัติของจังหวัดศรีสะเกษ</p>
           </div>
-          <button className={styles.headerButton} onClick={signOut}>พนักงาน</button>
+          <button className={styles.headerButton} onClick={signOut}>{userName}</button>
         </header>
 
         {/* Content */}
@@ -105,12 +132,12 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div className={styles.detailBadge} style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
-                  +17%
+                  {isLoading ? '...' : `${shelterTotal}`}
                 </div>
               </div>
               <div className={styles.detailLabel}>ศูนย์อพยพพักพิงทั้งหมด</div>
-              <div className={styles.detailValue}>24</div>
-              <div className={styles.detailSubtext}>เปิดใช้งาน 18 ศูนย์</div>
+              <div className={styles.detailValue}>{isLoading ? '...' : shelterTotal}</div>
+              <div className={styles.detailSubtext}>เปิดใช้งาน {isLoading ? '...' : shelterActive} ศูนย์</div>
             </div>
 
             <div className={styles.detailCard}>
@@ -122,12 +149,12 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div className={styles.detailBadge} style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
-                  +8%
+                  {isLoading ? '...' : `${dashboardData?.shelters?.avgOccupancy ?? 0}%`}
                 </div>
               </div>
-              <div className={styles.detailLabel}>ครอบครัวที่เข้าพักทั้งหมด</div>
-              <div className={styles.detailValue}>156</div>
-              <div className={styles.detailSubtext}>เปิดใช้งาน 142 ศูนย์</div>
+              <div className={styles.detailLabel}>อัตราการใช้งานเฉลี่ย</div>
+              <div className={styles.detailValue}>{isLoading ? '...' : `${dashboardData?.shelters?.avgOccupancy ?? 0}%`}</div>
+              <div className={styles.detailSubtext}>ศูนย์เกือบเต็ม {isLoading ? '...' : dashboardData?.shelters?.nearlyFull ?? 0} แห่ง</div>
             </div>
 
             <div className={styles.detailCard}>
@@ -139,12 +166,12 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div className={styles.detailBadge} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                  +24%
+                  {isLoading ? '...' : requestsPending}
                 </div>
               </div>
               <div className={styles.detailLabel}>คำร้องขอความช่วยเหลือ</div>
-              <div className={styles.detailValue}>89</div>
-              <div className={styles.detailSubtext}>รอดำเนินการ 54 รายการ</div>
+              <div className={styles.detailValue}>{isLoading ? '...' : requestsTotal}</div>
+              <div className={styles.detailSubtext}>รอดำเนินการ {isLoading ? '...' : requestsPending} รายการ</div>
             </div>
 
             <div className={styles.detailCard}>
@@ -161,12 +188,9 @@ export default function DashboardPage() {
                   </svg>
                 </div>
               </div>
-              <div className={styles.detailLabel}>ส่งของที่ยอมรับทั้งหมด</div>
-              <div className={styles.detailValue}>
-                <span style={{ fontSize: '20px', color: '#64748b' }}>ว่าง</span>
-                <span style={{ fontSize: '14px', color: '#64748b', marginLeft: '8px' }}>ยัง</span>
-              </div>
-              <div className={styles.detailSubtext}></div>
+              <div className={styles.detailLabel}>คำร้องที่อนุมัติแล้ว</div>
+              <div className={styles.detailValue}>{isLoading ? '...' : requestsApproved}</div>
+              <div className={styles.detailSubtext}>โอนแล้ว {isLoading ? '...' : dashboardData?.requests?.transferred ?? 0} รายการ</div>
             </div>
           </div>
         </div>

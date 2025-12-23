@@ -72,6 +72,7 @@ export default function AdminDashboard() {
         sheltersRes,
         pendingRequestsRes,
         approvedRequestsRes,
+        transferredRequestsRes,
         usersRes,
         stockRes // Added stockRes
       ] = await Promise.all([
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
         getShelterStatus(),
         getRequests('pending'),
         getRequests('approved'),
+        getRequests('transferred'),
         getUsers(),
         getWarehouses() // Fetch Warehouses instead of getStock
       ]);
@@ -91,7 +93,13 @@ export default function AdminDashboard() {
         setTotalPeopleCount(total);
       }
       if (pendingRequestsRes.success) setRequests(pendingRequestsRes.data || []);
-      if (approvedRequestsRes.success) setApprovedRequests(approvedRequestsRes.data || []);
+      // Combine approved and transferred requests for history
+      const approved = approvedRequestsRes.success ? (approvedRequestsRes.data || []) : [];
+      const transferred = transferredRequestsRes.success ? (transferredRequestsRes.data || []) : [];
+      const allApprovedHistory = [...approved, ...transferred].sort(
+        (a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+      );
+      setApprovedRequests(allApprovedHistory);
       if (usersRes.success) setSystemUsers(usersRes.data || []);
 
       const lowStockResult = await getLowStockItems();
@@ -1582,8 +1590,12 @@ export default function AdminDashboard() {
                             </td>
                             <td>{req.requestedBy?.name}</td>
                             <td>
-                              <span className={`${styles.statusBadge} ${styles.badgeNormal}`} style={{ backgroundColor: '#e7f5ff', color: '#1d3557' }}>
-                                <ThumbsUp size={12} style={{ marginRight: '4px' }} /> อนุมัติแล้ว
+                              <span className={`${styles.statusBadge} ${styles.badgeNormal}`} style={{ 
+                                backgroundColor: '#d3f9d8', 
+                                color: '#2b8a3e' 
+                              }}>
+                                <ThumbsUp size={12} style={{ marginRight: '4px' }} /> 
+                                อนุมัติแล้ว
                               </span>
                             </td>
                           </tr>

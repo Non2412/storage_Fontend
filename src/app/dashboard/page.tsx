@@ -4,12 +4,13 @@ import React, { useEffect, useState } from 'react';
 import styles from './dashboard.module.css';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
-import { getDashboardOverview, logout, isAuthenticated, getCurrentUser, type DashboardOverview } from '@/lib/api';
+import { getDashboardOverview, getShelterStatus, logout, isAuthenticated, getCurrentUser, type DashboardOverview, type ShelterStatus } from '@/lib/api';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardOverview | null>(null);
+  const [totalPeople, setTotalPeople] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('พนักงาน');
 
@@ -32,12 +33,21 @@ export default function DashboardPage() {
     }
 
     // Fetch dashboard data
-    async function fetchDashboard() {
+    async function fetchData() {
       setIsLoading(true);
       try {
-        const result = await getDashboardOverview();
-        if (result.success && result.data) {
-          setDashboardData(result.data);
+        const [ovResult, shResult] = await Promise.all([
+          getDashboardOverview(),
+          getShelterStatus()
+        ]);
+
+        if (ovResult.success && ovResult.data) {
+          setDashboardData(ovResult.data);
+        }
+
+        if (shResult.success && shResult.data) {
+          const total = shResult.data.reduce((sum: number, s: ShelterStatus) => sum + (s.currentPeople || 0), 0);
+          setTotalPeople(total);
         }
       } catch (err) {
         console.error('Error fetching dashboard:', err);
@@ -46,7 +56,7 @@ export default function DashboardPage() {
       }
     }
 
-    fetchDashboard();
+    fetchData();
   }, [router, isMounted]);
 
   function signOut() {
@@ -153,8 +163,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className={styles.detailLabel}>ครอบครัวที่เข้าพักทั้งหมด</div>
-              <div className={styles.detailValue}>156</div>
-              <div className={styles.detailSubtext}>เปิดใช้งาน 140 ศูนย์</div>
+              <div className={styles.detailValue}>{isLoading ? '...' : totalPeople}</div>
+              <div className={styles.detailSubtext}>จาก {isLoading ? '...' : shelterTotal} ศูนย์</div>
             </div>
 
             <div className={styles.detailCard}>

@@ -93,7 +93,8 @@ export default function NeedsPage() {
                 [{
                     itemId: formData.itemId,
                     quantityRequested: formData.quantity
-                }]
+                }],
+                formData.description
             );
 
             if (result.success) {

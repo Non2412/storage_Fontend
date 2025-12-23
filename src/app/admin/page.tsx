@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3, Users, Home, Package, AlertCircle,
@@ -8,20 +8,103 @@ import {
   TrendingUp, TrendingDown, DollarSign, Calendar,
   FileText, ThumbsUp, ChevronDown, Grid3x3, Type, FileQuestion,
   Truck, ClipboardList, ArrowUpRight, ArrowDownLeft, ShieldCheck, Database,
-  UserCheck, Newspaper, Save
+  UserCheck, Newspaper, Save, LayoutDashboard
 } from 'lucide-react';
 import {
   LineChart, Line, PieChart, Pie, Cell,
   Tooltip, ResponsiveContainer
 } from 'recharts';
 import styles from './admin.module.css';
+import {
+  getDashboardOverview, getShelterStatus, getRequests, getLowStockItems,
+  getItems, getUsers, isAuthenticated, getCurrentUser,
+  logout, approveRequest, getShelters, getDistributionTasks, getStock,
+  type DashboardOverview,
+  type ShelterStatus, type Request, type User, type Shelter
+} from '@/lib/api';
 
 export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
   const [inventorySubTab, setInventorySubTab] = useState('overview');
   const [settingsSubTab, setSettingsSubTab] = useState('general');
   const router = useRouter();
+
+  // API Data State
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardOverview | null>(null);
+  const [shelters, setShelters] = useState<ShelterStatus[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [approvedRequests, setApprovedRequests] = useState<Request[]>([]);
+  const [systemUsers, setSystemUsers] = useState<User[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<any[]>([]);
+  const [totalPeopleCount, setTotalPeopleCount] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    if (!isAuthenticated()) {
+      router.replace('/');
+      return;
+    }
+
+    const user = getCurrentUser();
+    if (user?.role !== 'admin') {
+      alert('คุณไม่มีสิทธิ์เข้าถึงหน้านี้');
+      router.replace('/dashboard');
+      return;
+    }
+
+    fetchInitialData();
+  }, [isMounted, router]);
+
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    try {
+      const [
+        overviewRes,
+        sheltersRes,
+        pendingRequestsRes,
+        approvedRequestsRes,
+        usersRes,
+        stockRes // Added stockRes
+      ] = await Promise.all([
+        getDashboardOverview(),
+        getShelterStatus(),
+        getRequests('pending'),
+        getRequests('approved'),
+        getUsers(),
+        getStock() // Call getStock
+      ]);
+
+      if (overviewRes.success) setDashboardData(overviewRes.data || null);
+      if (sheltersRes.success) {
+        const sheltersData = sheltersRes.data || [];
+        setShelters(sheltersData);
+        const total = sheltersData.reduce((sum, s) => sum + (s.currentPeople || 0), 0);
+        setTotalPeopleCount(total);
+      }
+      if (pendingRequestsRes.success) setRequests(pendingRequestsRes.data || []);
+      if (approvedRequestsRes.success) setApprovedRequests(approvedRequestsRes.data || []);
+      if (usersRes.success) setSystemUsers(usersRes.data || []);
+
+      const lowStockResult = await getLowStockItems();
+      if (lowStockResult.success) setLowStockItems(lowStockResult.data || []);
+      if (stockRes.success && stockRes.data) { // Fetch stock data
+        setStockData(stockRes.data);
+      }
+
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAction = (message: string) => {
     console.log(`Action triggered: ${message}`);
@@ -29,87 +112,90 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    console.log('Logout attempt');
     if (confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
-      router.push('/');
+      logout();
     }
   };
 
-  // สถานะสรุปภาพรวมศูนย์ (จำลองข้อมูลจาก 500+ ศูนย์)
+  // ดึงข้อมูลสรุปจาก API
   const shelterStats = {
-    total: 512,
-    critical: 42,
-    warning: 128,
-    normal: 342,
-    totalPeople: 12450
+    total: dashboardData?.shelters?.total || 0,
+    critical: dashboardData?.shelters?.full || 0,
+    warning: dashboardData?.shelters?.nearlyFull || 0,
+    normal: dashboardData?.shelters?.normal || 0,
+    totalPeople: totalPeopleCount
   };
 
-  // รายการคำร้องขอล่าสุด (เน้น 3-click rule)
-  const [requests, setRequests] = useState([
-    { id: 'REQ-001', shelter: 'ศูนย์กีฬาบางกอก', items: 'อาหาร, น้ำดื่ม', province: 'กรุงเทพฯ', time: '5 น. ที่แล้ว', status: 'pending' },
-    { id: 'REQ-002', shelter: 'โรงเรียนวัดดอนเมือง', items: 'ผ้าห่ม, ยา', province: 'กรุงเทพฯ', time: '12 น. ที่แล้ว', status: 'pending' },
-    { id: 'REQ-003', shelter: 'หอประชุมแจ้งวัฒนะ', items: 'ชุดสุขอนามัย', province: 'นนทบุรี', time: '20 น. ที่แล้ว', status: 'pending' },
-  ]);
+  // Replace hardcoded stockData with state
+  const [stockData, setStockData] = useState<any[]>([]);
 
-  // ขลังสินค้ากองกลาง/จังหวัด (แยกหมวดหมู่)
-  const stockData = [
-    { category: 'อาหาร', quantity: '12,500', unit: 'ชุด', status: 'เพียงพอ', color: '#40c057' },
-    { category: 'น้ำดื่ม', quantity: '8,400', unit: 'แพ็ค', status: 'ต้องเติม', color: '#fab005' },
-    { category: 'เวชภัณฑ์', quantity: '3,200', unit: 'ชุด', status: 'เพียงพอ', color: '#339af0' },
-    { category: 'เครื่องนุ่งห่ม', quantity: '1,500', unit: 'ชิ้น', status: 'วิกฤต', color: '#fa5252' },
-  ];
+  const handleApprove = async (id: string) => {
+    if (!confirm('ยืนยันการอนุมัติคำร้อง?')) return;
 
-  const handleApprove = (id: string) => {
-    setRequests(requests.filter(req => req.id !== id));
-    // ในอนาคตจะมีการตัดสต็อกผ่าน API ตรงนี้
-    alert('อนุมัติและหักสต็อกอัตโนมัติเรียบร้อย');
+    try {
+      // สำหรับ Demo เราจะเลือกคลังแรกหรือส่งค่าว่างไปก่อน
+      const result = await approveRequest(id, [], "");
+      if (result.success) {
+        alert('อนุมัติคำร้องขอเรียบร้อยแล้ว');
+        fetchInitialData(); // Refresh data
+      } else {
+        alert(result.message || 'เกิดข้อผิดพลาด');
+      }
+    } catch (error) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
   };
 
-  // ข้อมูลจำลองสำหรับหน้าศูนย์พักพิง
   const [shelterFilter, setShelterFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [shelters, setShelters] = useState([
-    { id: 1, name: 'ศูนย์กีฬาบางกอก', province: 'กรุงเทพฯ', people: 300, capacity: 300, status: 'critical', phone: '02-xxx-xxxx' },
-    { id: 2, name: 'โรงเรียนวัดดอนเมือง', province: 'กรุงเทพฯ', people: 190, capacity: 200, status: 'warning', phone: '02-xxx-xxxx' },
-    { id: 3, name: 'ศาลาประชาคมปากเกร็ด', province: 'นนทบุรี', people: 120, capacity: 400, status: 'normal', phone: '02-xxx-xxxx' },
-    { id: 4, name: 'วัดไร่ขิง', province: 'นครปฐม', people: 450, capacity: 500, status: 'warning', phone: '034-xxx-xxxx' },
-    { id: 5, name: 'สนามกีฬาจังหวัดอุบลฯ', province: 'อุบลราชธานี', people: 800, capacity: 800, status: 'critical', phone: '045-xxx-xxxx' },
-  ]);
 
   // สถานะสำหรับ Modal เพิ่มศูนย์ใหม่
   const [isShelterModalOpen, setIsShelterModalOpen] = useState(false);
   const [newShelter, setNewShelter] = useState({
     name: '',
     province: '',
-    people: 0,
+    district: '',
+    address: '',
     capacity: 0,
-    phone: ''
+    currentPeople: 0,
+    phone: '',
+    contactName: ''
   });
 
-  const handleSaveShelter = () => {
+  const handleSaveShelter = async () => {
     if (!newShelter.name || !newShelter.province || !newShelter.capacity) {
       alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน');
       return;
     }
 
-    const occupancyRate = newShelter.people / newShelter.capacity;
-    let status = 'normal';
-    if (occupancyRate >= 1) status = 'critical';
-    else if (occupancyRate >= 0.8) status = 'warning';
+    try {
+      // ใน lib/api ยังไม่มีฟังก์ชัน createShelter โดยตรง แต่เราสามารถใช้ fetch
+      const result = await fetch('/api/shelters', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('ndr_token')}`
+        },
+        body: JSON.stringify({
+          ...newShelter,
+          status: 'normal'
+        })
+      });
 
-    const entry = {
-      ...newShelter,
-      id: Date.now(),
-      status
-    };
-
-    setShelters([...shelters, entry]);
-    setIsShelterModalOpen(false);
-    setNewShelter({ name: '', province: '', people: 0, capacity: 0, phone: '' });
-    alert('เพิ่มศูนย์พักพิงใหม่เรียบร้อยแล้ว');
+      if (result.ok) {
+        alert('เพิ่มศูนย์พักพิงใหม่เรียบร้อยแล้ว');
+        setIsShelterModalOpen(false);
+        setNewShelter({ name: '', province: '', district: '', address: '', capacity: 0, currentPeople: 0, phone: '', contactName: '' });
+        fetchInitialData();
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      }
+    } catch (error) {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
   };
 
-  // ข้อมูลจำลองสำหรับคลังสินค้า
+  // ข้อมูลจำลองสำหรับคลังสินค้า (ยังไม่มี API คลังโดยตรง)
   const provincesStock = [
     { name: 'คลังกลาง (กรุงเทพฯ)', items: 5400, status: 'ปกติ' },
     { name: 'คลังประจำจังหวัดขอนแก่น', items: 1200, status: 'ของเริ่มน้อย' },
@@ -190,13 +276,6 @@ export default function AdminDashboard() {
     setSelectedDistId(id);
     setIsDistModalOpen(true);
   };
-
-  // ข้อมูลผู้ใช้งานและสิทธิ์ (RBAC)
-  const [systemUsers, setSystemUsers] = useState([
-    { id: 1, name: 'แอดมิน สมปอง', email: 'sompong@disaster.go.th', role: 'Super Admin', status: 'active', lastLogin: '10 นาทีที่แล้ว' },
-    { id: 2, name: 'เจ้าหน้าที่ วิชัย', email: 'wichai@logistics.com', role: 'Logistics', status: 'active', lastLogin: '1 ชม. ที่แล้ว' },
-    { id: 3, name: 'เจ้าหน้าที่ สายใจ', email: 'saijai@warehouse.io', role: 'Warehouse', status: 'offline', lastLogin: '5 ชม. ที่แล้ว' },
-  ]);
 
   // ข้อมูลบันทึกเหตุการณ์ (Audit Logs)
   const auditLogs = [
@@ -310,13 +389,13 @@ export default function AdminDashboard() {
         {/* Sidebar Menu */}
         <div className={styles.sidebarMenu}>
           {[
-            { icon: BarChart3, label: 'หน้าหลัก', id: 'dashboard' },
+            { icon: LayoutDashboard, label: 'ภาพรวมระบบ', id: 'overview' },
+            { icon: FileText, label: 'รายการคำร้อง', id: 'requests' },
             { icon: Home, label: 'ศูนย์พักพิง', id: 'shelters' },
             { icon: Package, label: 'คลังสินค้า', id: 'inventory' },
             { icon: Truck, label: 'การกระจายสิ่งของ', id: 'distribution' },
             { icon: ShieldCheck, label: 'ผู้ส่งมอบ', id: 'suppliers' },
-            { icon: Database, label: 'บันทึกเหตุการณ์', id: 'logs' },
-            { icon: AlertCircle, label: 'แจ้งเตือน', id: 'alerts' },
+            { icon: ClipboardList, label: 'ประวัติการอนุมัติ', id: 'logs' },
             { icon: Settings, label: 'ตั้งค่าระบบ', id: 'settings' },
           ].map((item) => (
             <button
@@ -364,7 +443,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className={styles.headerRight}>
-            <div className={styles.headerBtn} onClick={() => setActiveTab('alerts')}>
+            <div className={styles.headerBtn}>
               <Bell size={20} />
             </div>
             <div className={styles.headerBtn} onClick={() => setActiveTab('settings')}>
@@ -376,7 +455,7 @@ export default function AdminDashboard() {
         {/* Content Area */}
         <div className={styles.content}>
           <div className={styles.contentWrapper}>
-            {activeTab === 'dashboard' && (
+            {activeTab === 'overview' && (
               <>
                 {/* Welcome Banner */}
                 <div className={styles.welcomeBanner}>
@@ -448,17 +527,19 @@ export default function AdminDashboard() {
                   <div className={styles.chartCard}>
                     <div className={styles.chartHeader}>
                       <h3 className={styles.chartTitle}>คำร้องขอสิ่งของเร่งด่วน</h3>
-                      <button onClick={() => setActiveTab('alerts')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
+                      <button onClick={() => setActiveTab('requests')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {requests.map(req => (
-                        <div key={req.id} className={styles.requestItem}>
+                        <div key={req._id} className={styles.requestItem}>
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '14px' }}>{req.shelter}</div>
-                            <div style={{ fontSize: '12px', color: '#868e96' }}>{req.items} • {req.province}</div>
+                            <div style={{ fontWeight: '600', fontSize: '14px' }}>{req.shelterId?.name || 'Unknown Shelter'}</div>
+                            <div style={{ fontSize: '12px', color: '#868e96' }}>
+                              {req.items.map(i => i.itemId?.name).join(', ')}
+                            </div>
                           </div>
                           <button
-                            onClick={() => handleApprove(req.id)}
+                            onClick={() => handleApprove(req._id)}
                             className={styles.approveBtn}
                           >
                             อนุมัติ
@@ -494,7 +575,7 @@ export default function AdminDashboard() {
                   <div className={styles.chartCard}>
                     <div className={styles.chartHeader}>
                       <h3 className={styles.chartTitle}>การแจ้งเตือนระบบ</h3>
-                      <button onClick={() => setActiveTab('alerts')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
+                      <h3 className={styles.chartTitle}>การแจ้งเตือนระบบ</h3>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {notifications.map(notif => (
@@ -519,17 +600,26 @@ export default function AdminDashboard() {
                   <div className={styles.chartCard} style={{ gridColumn: sidebarOpen ? 'span 2' : 'span 1' }}>
                     <h3 className={styles.chartTitle} style={{ marginBottom: '20px' }}>สถานะคลังสินค้ากองกลาง</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                      {stockData.map((stock, idx) => (
-                        <div key={idx}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontWeight: '500', fontSize: '14px' }}>{stock.category}</span>
-                            <span style={{ fontSize: '14px', color: stock.color, fontWeight: 'bold' }}>{stock.quantity} {stock.unit}</span>
+                      {lowStockItems.length > 0 ? (
+                        lowStockItems.slice(0, 4).map((stock) => (
+                          <div key={stock._id}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ fontWeight: '500', fontSize: '14px' }}>{stock.itemId?.name || 'Unknown Item'}</span>
+                              <span style={{ fontSize: '14px', color: '#fa5252', fontWeight: 'bold' }}>{stock.quantity} {stock.itemId?.unit || ''}</span>
+                            </div>
+                            <div className={styles.progressBarOuter}>
+                              <div className={styles.progressBarInner} style={{
+                                width: `${Math.min((stock.quantity / (stock.minAlert || 1)) * 100, 100)}%`,
+                                backgroundColor: '#fa5252'
+                              }}></div>
+                            </div>
                           </div>
-                          <div className={styles.progressBarOuter}>
-                            <div className={styles.progressBarInner} style={{ width: idx === 3 ? '25%' : '75%', backgroundColor: stock.color }}></div>
-                          </div>
+                        ))
+                      ) : (
+                        <div style={{ gridColumn: 'span 2', textAlign: 'center', color: '#868e96', padding: '20px' }}>
+                          ไม่มีรายการสินค้าที่ต้องเติมเร่งด่วน
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
 
@@ -578,15 +668,15 @@ export default function AdminDashboard() {
                     <div className={styles.statusLegend}>
                       <div className={styles.legendItem}>
                         <div className={styles.legendColor} style={{ backgroundColor: '#fa5252' }}></div>
-                        วิกฤต (42)
+                        วิกฤต ({shelterStats.critical})
                       </div>
                       <div className={styles.legendItem}>
                         <div className={styles.legendColor} style={{ backgroundColor: '#fab005' }}></div>
-                        ใกล้เต็ม (128)
+                        ใกล้เต็ม ({shelterStats.warning})
                       </div>
                       <div className={styles.legendItem}>
                         <div className={styles.legendColor} style={{ backgroundColor: '#40c057' }}></div>
-                        ปกติ (342)
+                        ปกติ ({shelterStats.normal})
                       </div>
                     </div>
                   </div>
@@ -650,30 +740,30 @@ export default function AdminDashboard() {
                       {shelters
                         .filter((s: any) => (s.name.includes(shelterFilter) || s.province.includes(shelterFilter)) && (statusFilter === 'all' || s.status === statusFilter))
                         .sort((a: any, b: any) => {
-                          const severity: Record<string, number> = { critical: 0, warning: 1, normal: 2 };
+                          const severity: Record<string, number> = { full: 0, nearly_full: 1, normal: 2 };
                           return (severity[a.status] ?? 3) - (severity[b.status] ?? 3);
                         })
                         .map((shelter: any) => (
-                          <tr key={shelter.id}>
+                          <tr key={shelter._id}>
                             <td style={{ fontWeight: '600' }}>{shelter.name}</td>
                             <td>{shelter.province}</td>
                             <td>
-                              <div style={{ fontSize: '13px' }}>{shelter.people} / {shelter.capacity}</div>
+                              <div style={{ fontSize: '13px' }}>{shelter.currentPeople} / {shelter.capacity}</div>
                               <div className={styles.progressBarOuter} style={{ height: '4px', width: '100px', marginTop: '4px' }}>
                                 <div className={styles.progressBarInner} style={{
-                                  width: `${(shelter.people / shelter.capacity) * 100}%`,
-                                  backgroundColor: shelter.status === 'critical' ? '#fa5252' : shelter.status === 'warning' ? '#fab005' : '#40c057'
+                                  width: `${(shelter.currentPeople / shelter.capacity) * 100}%`,
+                                  backgroundColor: shelter.status === 'full' ? '#fa5252' : shelter.status === 'nearly_full' ? '#fab005' : '#40c057'
                                 }}></div>
                               </div>
                             </td>
                             <td>
-                              <span className={`${styles.statusBadge} ${shelter.status === 'critical' ? styles.badgeCritical :
-                                shelter.status === 'warning' ? styles.badgeWarning : styles.badgeNormal
+                              <span className={`${styles.statusBadge} ${shelter.status === 'full' ? styles.badgeCritical :
+                                shelter.status === 'nearly_full' ? styles.badgeWarning : styles.badgeNormal
                                 }`}>
-                                {shelter.status === 'critical' ? 'เต็ม (วิกฤต)' : shelter.status === 'warning' ? 'ใกล้เต็ม' : 'ปกติ'}
+                                {shelter.status === 'full' ? 'เต็ม (วิกฤต)' : shelter.status === 'nearly_full' ? 'ใกล้เต็ม' : 'ปกติ'}
                               </span>
                             </td>
-                            <td style={{ color: '#4361ee', cursor: 'pointer' }}>{shelter.phone}</td>
+                            <td style={{ color: '#4361ee', cursor: 'pointer' }}>{shelter.contactPhone}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -719,8 +809,8 @@ export default function AdminDashboard() {
                           <input
                             type="number"
                             className={styles.formInput}
-                            value={newShelter.people}
-                            onChange={(e) => setNewShelter({ ...newShelter, people: parseInt(e.target.value) || 0 })}
+                            value={newShelter.currentPeople}
+                            onChange={(e) => setNewShelter({ ...newShelter, currentPeople: parseInt(e.target.value) || 0 })}
                           />
                         </div>
                         <div className={styles.formGroup} style={{ flex: 1 }}>
@@ -1186,41 +1276,130 @@ export default function AdminDashboard() {
               <div className={styles.chartCard} style={{ animation: 'fadeIn 0.4s ease-out' }}>
                 <div className={styles.chartHeader}>
                   <div>
-                    <h3 className={styles.chartTitle}>บันทึกเหตุการณ์ระบบ (Audit Logs)</h3>
-                    <p style={{ color: '#868e96', fontSize: '14px' }}>ตรวจสอบประวัติการใช้งานและการเข้าถึงข้อมูลของเจ้าหน้าที่ทุกคน</p>
+                    <h3 className={styles.chartTitle}>ประวัติการอนุมัติคำร้องขอสิ่งของ</h3>
+                    <p style={{ color: '#868e96', fontSize: '14px' }}>รายการคำร้องที่ผ่านการอนุมัติและเตรียมจัดส่งแล้ว</p>
                   </div>
-                  <button
-                    onClick={() => handleAction('ส่งออกบันทึกเหตุการณ์ (CSV)')}
-                    className={styles.approveBtn}
-                    style={{ backgroundColor: '#f1f3f5', color: '#495057' }}
-                  >
-                    Export to CSV
-                  </button>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ padding: '8px 16px', backgroundColor: '#e7f5ff', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', color: '#1971c2', fontWeight: 'bold', textTransform: 'uppercase' }}>อนุมัติแล้วรวม</div>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1971c2' }}>{approvedRequests.length}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className={styles.tableContainer} style={{ marginTop: '24px' }}>
                   <table className={styles.customTable}>
                     <thead>
                       <tr>
-                        <th>วัน-เวลา</th>
-                        <th>ผู้ใช้งาน</th>
-                        <th>กิจกรรม</th>
-                        <th>โมดูล</th>
-                        <th>IP Address</th>
+                        <th>วัน-เวลาที่อนุมัติ</th>
+                        <th>หน่วยงานที่ขอ</th>
+                        <th>รายการสิ่งของ</th>
+                        <th>ผู้ขอ (หน่วยงาน)</th>
+                        <th>สถานะ</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {auditLogs.map(log => (
-                        <tr key={log.id}>
-                          <td style={{ fontSize: '13px', color: '#868e96' }}>{log.time}</td>
-                          <td style={{ fontWeight: '600' }}>{log.user}</td>
-                          <td>{log.action}</td>
-                          <td>
-                            <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '4px', backgroundColor: '#e9ecef', color: '#495057' }}>{log.module}</span>
+                      {approvedRequests.length > 0 ? (
+                        approvedRequests.map(req => (
+                          <tr key={req._id}>
+                            <td style={{ fontSize: '13px', color: '#868e96' }}>
+                              {new Date(req.updatedAt || req.createdAt).toLocaleString('th-TH')}
+                            </td>
+                            <td style={{ fontWeight: '600' }}>{req.shelterId?.name || 'Unknown'}</td>
+                            <td>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {req.items.map((item, idx) => (
+                                  <span key={idx} style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: '#f1f3f5', borderRadius: '4px' }}>
+                                    {item.itemId?.name} ({item.quantityRequested} {item.itemId?.unit})
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td>{req.requestedBy?.name}</td>
+                            <td>
+                              <span className={`${styles.statusBadge} ${styles.badgeNormal}`} style={{ backgroundColor: '#e7f5ff', color: '#1d3557' }}>
+                                <ThumbsUp size={12} style={{ marginRight: '4px' }} /> อนุมัติแล้ว
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#adb5bd' }}>
+                            ไม่มีประวัติการอนุมัติในขณะนี้
                           </td>
-                          <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{log.ip}</td>
                         </tr>
-                      ))}
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'requests' && (
+              <div className={styles.chartCard} style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                <div className={styles.chartHeader}>
+                  <div>
+                    <h3 className={styles.chartTitle}>รายการคำร้องที่รอการอนุมัติ</h3>
+                    <p style={{ color: '#868e96', fontSize: '14px' }}>ตรวจสอบและพิจารณาคำขอสิ่งของเร่งด่วนจากศูนย์พักพิงต่างๆ</p>
+                  </div>
+                  <div style={{ padding: '8px 16px', backgroundColor: '#fff9db', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: '#f08c00', fontWeight: 'bold', textTransform: 'uppercase' }}>รออนุมัติ</div>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#f08c00' }}>{requests.length}</div>
+                  </div>
+                </div>
+
+                <div className={styles.tableContainer} style={{ marginTop: '24px' }}>
+                  <table className={styles.customTable}>
+                    <thead>
+                      <tr>
+                        <th>วัน-เวลาที่ขอ</th>
+                        <th>ศูนย์พักพิง</th>
+                        <th>รายการสิ่งของ</th>
+                        <th>ผู้ขอ</th>
+                        <th>เหตุผล/ความจำเป็น</th>
+                        <th>จัดการ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requests.length > 0 ? (
+                        requests.map(req => (
+                          <tr key={req._id}>
+                            <td style={{ fontSize: '13px', color: '#868e96' }}>
+                              {new Date(req.createdAt).toLocaleString('th-TH')}
+                            </td>
+                            <td style={{ fontWeight: '600' }}>{req.shelterId?.name || 'Unknown'}</td>
+                            <td>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {req.items.map((item, idx) => (
+                                  <span key={idx} style={{ fontSize: '12px', padding: '2px 8px', backgroundColor: '#f8f9fa', borderRadius: '4px', border: '1px solid #dee2e6' }}>
+                                    {item.itemId?.name} ({item.quantityRequested} {item.itemId?.unit})
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td>{req.requestedBy?.name || 'N/A'}</td>
+                            <td style={{ fontSize: '13px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {req.reason || '-'}
+                            </td>
+                            <td>
+                              <button
+                                onClick={() => handleApprove(req._id)}
+                                className={styles.approveBtn}
+                                style={{ padding: '6px 12px', fontSize: '13px' }}
+                              >
+                                อนุมัติ
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#adb5bd' }}>
+                            ไม่มีคำร้องที่รอการอนุมัติในขณะนี้
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1293,7 +1472,7 @@ export default function AdminDashboard() {
                         </thead>
                         <tbody>
                           {systemUsers.map((user: any) => (
-                            <tr key={user.id}>
+                            <tr key={user._id}>
                               <td style={{ fontWeight: '600' }}>{user.name}</td>
                               <td>{user.email}</td>
                               <td>
@@ -1301,11 +1480,11 @@ export default function AdminDashboard() {
                               </td>
                               <td>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: user.status === 'active' ? '#40c057' : '#adb5bd' }}></div>
-                                  {user.status === 'active' ? 'ออนไลน์' : 'ออฟไลน์'}
+                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: user.isActive ? '#40c057' : '#adb5bd' }}></div>
+                                  {user.isActive ? 'ออนไลน์' : 'ออฟไลน์'}
                                 </span>
                               </td>
-                              <td style={{ fontSize: '12px', color: '#868e96' }}>{user.lastLogin}</td>
+                              <td style={{ fontSize: '12px', color: '#868e96' }}>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'N/A'}</td>
                               <td>
                                 <button
                                   onClick={() => handleAction(`แก้ไขสิทธิ์ของ ${user.name}`)}
@@ -1409,128 +1588,96 @@ export default function AdminDashboard() {
                 )}
               </div>
             )}
+            {/* Modal รายละเอียดการแจ้งเตือน */}
+            {isAlertModalOpen && selectedAlertId && (
+              <div className={styles.modalOverlay}>
+                {(() => {
+                  const activeAlert = notifications.find(n => n.id === selectedAlertId);
+                  const shelter = shelters.find(s => s._id === (activeAlert as any)?.shelterId);
 
-            {activeTab === 'alerts' && (
-              <div className={styles.chartCard} style={{ animation: 'fadeIn 0.4s ease-out' }}>
-                <h3 className={styles.chartTitle} style={{ marginBottom: '24px' }}>ศูนย์แจ้งเตือนเหตุวิกฤต</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {notifications.map(note => (
-                    <div key={note.id} className={styles.requestItem} style={{ borderLeft: `4px solid ${note.type === 'critical' ? '#fa5252' : note.type === 'request' ? '#fab005' : '#339af0'}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ backgroundColor: note.type === 'critical' ? '#fff5f5' : note.type === 'request' ? '#fff9db' : '#e7f5ff', padding: '10px', borderRadius: '8px' }}>
-                          {note.type === 'critical' ? <AlertCircle size={24} color="#fa5252" /> : note.type === 'request' ? <Package size={24} color="#fab005" /> : <Bell size={24} color="#339af0" />}
-                        </div>
+                  return (
+                    <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
+                      <div className={styles.modalHeader}>
                         <div>
-                          <div style={{ fontWeight: '600' }}>{note.msg}</div>
-                          <div style={{ fontSize: '12px', color: '#868e96' }}>{note.time}</div>
+                          <div style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            backgroundColor: activeAlert?.type === 'critical' ? '#fff5f5' : '#e7f5ff',
+                            color: activeAlert?.type === 'critical' ? '#fa5252' : '#339af0',
+                            marginBottom: '8px'
+                          }}>
+                            {activeAlert?.type === 'critical' ? 'วิกฤต (Critical)' : 'แจ้งเตือน (Alert)'}
+                          </div>
+                          <h3 className={styles.modalTitle}>{activeAlert?.msg ? activeAlert.msg.split(':')[0] : 'แจ้งเตือน'}</h3>
                         </div>
+                        <button onClick={() => setIsAlertModalOpen(false)} className={styles.closeBtn}>
+                          <X size={20} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          setSelectedAlertId(note.id);
-                          setIsAlertModalOpen(true);
-                        }}
-                        className={styles.approveBtn}
-                        style={{ backgroundColor: '#f1f3f5', color: '#495057' }}
-                      >
-                        ดูรายละเอียด
-                      </button>
-                    </div>
-                  ))}
-                </div>
 
-                {/* Modal รายละเอียดการแจ้งเตือน */}
-                {isAlertModalOpen && selectedAlertId && (
-                  <div className={styles.modalOverlay}>
-                    {(() => {
-                      const activeAlert = notifications.find(n => n.id === selectedAlertId);
-                      const shelter = shelters.find(s => s.id === (activeAlert as any)?.shelterId);
+                      <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '12px' }}>
+                        <div style={{ fontWeight: '700', fontSize: '15px', color: '#212529', marginBottom: '4px' }}>ข้อความแจ้งเตือน:</div>
+                        <div style={{ fontSize: '14px', color: '#495057' }}>{activeAlert?.msg}</div>
+                      </div>
 
-                      return (
-                        <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
-                          <div className={styles.modalHeader}>
-                            <div>
-                              <div style={{
-                                display: 'inline-block',
-                                padding: '4px 12px',
-                                borderRadius: '20px',
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                backgroundColor: activeAlert?.type === 'critical' ? '#fff5f5' : '#e7f5ff',
-                                color: activeAlert?.type === 'critical' ? '#fa5252' : '#339af0',
-                                marginBottom: '8px'
-                              }}>
-                                {activeAlert?.type === 'critical' ? 'วิกฤต (Critical)' : 'แจ้งเตือน (Alert)'}
-                              </div>
-                              <h3 className={styles.modalTitle}>{activeAlert?.msg ? activeAlert.msg.split(':')[0] : 'แจ้งเตือน'}</h3>
+                      {shelter ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#868e96', marginBottom: '4px' }}>ประชากรในศูนย์</div>
+                            <div style={{ fontWeight: '600', fontSize: '18px' }}>{shelter.currentPeople} / {shelter.capacity}</div>
+                            <div className={styles.progressBarOuter} style={{ height: '6px', marginTop: '8px' }}>
+                              <div className={styles.progressBarInner} style={{
+                                width: `${(shelter.currentPeople / (shelter.capacity || 1)) * 100}%`,
+                                backgroundColor: (shelter.currentPeople / (shelter.capacity || 1)) >= 0.9 ? '#fa5252' : '#fab005'
+                              }}></div>
                             </div>
-                            <button onClick={() => setIsAlertModalOpen(false)} className={styles.closeBtn}>
-                              <X size={20} />
-                            </button>
                           </div>
-
-                          <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '12px' }}>
-                            <div style={{ fontWeight: '700', fontSize: '15px', color: '#212529', marginBottom: '4px' }}>ข้อความแจ้งเตือน:</div>
-                            <div style={{ fontSize: '14px', color: '#495057' }}>{activeAlert?.msg}</div>
-                          </div>
-
-                          {shelter ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
-                              <div>
-                                <div style={{ fontSize: '12px', color: '#868e96', marginBottom: '4px' }}>ประชากรในศูนย์</div>
-                                <div style={{ fontWeight: '600', fontSize: '18px' }}>{shelter.people} / {shelter.capacity}</div>
-                                <div className={styles.progressBarOuter} style={{ height: '6px', marginTop: '8px' }}>
-                                  <div className={styles.progressBarInner} style={{
-                                    width: `${(shelter.people / shelter.capacity) * 100}%`,
-                                    backgroundColor: (shelter.people / shelter.capacity) >= 0.9 ? '#fa5252' : '#fab005'
-                                  }}></div>
-                                </div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: '12px', color: '#868e96', marginBottom: '4px' }}>เบอร์ผู้ประสานงาน</div>
-                                <div style={{ fontWeight: '600', fontSize: '16px', color: '#4361ee' }}>📞 {shelter.phone}</div>
-                                <div style={{ fontSize: '11px', color: '#adb5bd', marginTop: '4px' }}>จังหวัด: {shelter.province}</div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ marginBottom: '32px', padding: '16px', textAlign: 'center', border: '1px dashed #dee2e6', borderRadius: '8px', color: '#868e96' }}>
-                              <Package size={24} style={{ marginBottom: '8px', opacity: 0.5 }} />
-                              <div>เป็นการแจ้งเตือนระบบทั่วไป</div>
-                            </div>
-                          )}
-
-                          <div className={styles.modalActions}>
-                            <button onClick={() => setIsAlertModalOpen(false)} className={styles.cancelBtn} style={{ flex: 1 }}>ปิด</button>
-                            {activeAlert?.type === 'critical' && (
-                              <button
-                                onClick={() => { alert('กำลังประสานงานคลังสินค้าเพื่อส่งของเร่งด่วน...'); setIsAlertModalOpen(false); }}
-                                className={styles.saveBtn}
-                                style={{ flex: 2, backgroundColor: '#fa5252' }}
-                              >
-                                จัดส่งสิ่งของด่วนที่สุด
-                              </button>
-                            )}
-                            {activeAlert?.type === 'request' && (
-                              <button
-                                onClick={() => { setActiveTab('distribution'); setIsAlertModalOpen(false); }}
-                                className={styles.saveBtn}
-                                style={{ flex: 2 }}
-                              >
-                                ไปยังหน้าการกระจายของ
-                              </button>
-                            )}
+                          <div>
+                            <div style={{ fontSize: '12px', color: '#868e96', marginBottom: '4px' }}>เบอร์ผู้ประสานงาน</div>
+                            <div style={{ fontWeight: '600', fontSize: '16px', color: '#4361ee' }}>📞 {shelter.contactPhone}</div>
+                            <div style={{ fontSize: '11px', color: '#adb5bd', marginTop: '4px' }}>จังหวัด: {shelter.province}</div>
                           </div>
                         </div>
-                      );
-                    })()}
-                  </div>
-                )}
+                      ) : (
+                        <div style={{ marginBottom: '32px', padding: '16px', textAlign: 'center', border: '1px dashed #dee2e6', borderRadius: '8px', color: '#868e96' }}>
+                          <Package size={24} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                          <div>เป็นการแจ้งเตือนระบบทั่วไป</div>
+                        </div>
+                      )}
+
+                      <div className={styles.modalActions}>
+                        <button onClick={() => setIsAlertModalOpen(false)} className={styles.cancelBtn} style={{ flex: 1 }}>ปิด</button>
+                        {activeAlert?.type === 'critical' && (
+                          <button
+                            onClick={() => { alert('กำลังประสานงานคลังสินค้าเพื่อส่งของเร่งด่วน...'); setIsAlertModalOpen(false); }}
+                            className={styles.saveBtn}
+                            style={{ flex: 2, backgroundColor: '#fa5252' }}
+                          >
+                            จัดส่งสิ่งของด่วนที่สุด
+                          </button>
+                        )}
+                        {activeAlert?.type === 'request' && (
+                          <button
+                            onClick={() => { setActiveTab('requests'); setIsAlertModalOpen(false); }}
+                            className={styles.saveBtn}
+                            style={{ flex: 2 }}
+                          >
+                            ไปยังหน้าการกระจายของ
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
-        </div>
-      </main>
-    </div>
+        </div >
+      </main >
+    </div >
   );
 }

@@ -18,9 +18,10 @@ import styles from './admin.module.css';
 import {
   getDashboardOverview, getShelterStatus, getRequests, getLowStockItems,
   getItems, getUsers, isAuthenticated, getCurrentUser,
-  logout, approveRequest, getShelters, getDistributionTasks, getStock,
+  logout, approveRequest, getShelters, getDistributionTasks,
+  getWarehouses, getStockStatus,
   type DashboardOverview,
-  type ShelterStatus, type Request, type User, type Shelter
+  type ShelterStatus, type Request, type User, type Shelter, type StockItem
 } from '@/lib/api';
 
 export default function AdminDashboard() {
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
         getRequests('pending'),
         getRequests('approved'),
         getUsers(),
-        getStock() // Call getStock
+        getWarehouses() // Fetch Warehouses instead of getStock
       ]);
 
       if (overviewRes.success) setDashboardData(overviewRes.data || null);
@@ -95,8 +96,54 @@ export default function AdminDashboard() {
 
       const lowStockResult = await getLowStockItems();
       if (lowStockResult.success) setLowStockItems(lowStockResult.data || []);
-      if (stockRes.success && stockRes.data) { // Fetch stock data
-        setStockData(stockRes.data);
+
+      // Calculate Stock Data from Warehouses (Same logic as User Inventory)
+      if (stockRes.success && stockRes.data) {
+        let foodQty = 0;
+        let medicalQty = 0;
+        let clothingQty = 0;
+        let hygieneQty = 0;
+
+        // Fetch stock for each warehouse
+        for (const warehouse of stockRes.data) {
+          try {
+            const warehouseStock = await getStockStatus(warehouse._id);
+            if (warehouseStock.success && warehouseStock.data?.items) {
+              warehouseStock.data.items.forEach((item: any) => {
+                // Map by category name or simple keywords
+                const catName = item.itemId?.categoryId?.name || "";
+                const name = item.itemId?.name || "";
+                const n = name.toLowerCase();
+
+                // 1. Food (User keywords excluding 'water' related for separation)
+                // 1. Food (Includes Water to match User Inventory logic)
+                if (n.includes('ข้าว') || n.includes('นม') || n.includes('อาหาร') || n.includes('rice') || n.includes('food') || n.includes('milk') || n.includes('bread') || n.includes('egg') ||
+                  n.includes('น้ำ') || n.includes('water')) {
+                  foodQty += item.quantity;
+                }
+                // 2. Clothing
+                else if (n.includes('เสื้อ') || n.includes('ผ้า') || n.includes('blanket') || n.includes('shirt') || n.includes('pants') || n.includes('clothing')) {
+                  clothingQty += item.quantity;
+                }
+                // 3. Medical
+                else if (n.includes('ยา') || n.includes('พลาส') || n.includes('แอลกอฮอล') || n.includes('medicine') || n.includes('first aid') || n.includes('paracetamol') || n.includes('diarrheal')) {
+                  medicalQty += item.quantity;
+                }
+                // 4. Hygiene (New category to match User)
+                else if (n.includes('สบู่') || n.includes('แปรง') || n.includes('soap') || n.includes('toothbrush') || n.includes('towel')) {
+                  hygieneQty += item.quantity;
+                }
+              });
+            }
+          } catch (e) { console.error("Error fetching warehouse stock", e); }
+        }
+
+        setStockData([
+          { category: 'อาหารและน้ำดื่ม', quantity: foodQty.toLocaleString(), unit: 'ชุด', status: foodQty > 1000 ? 'เพียงพอ' : 'ต้องเติม', color: '#40c057' },
+          { category: 'เครื่องนุ่งห่ม', quantity: clothingQty.toLocaleString(), unit: 'ชิ้น', status: clothingQty > 500 ? 'เพียงพอ' : 'วิกฤต', color: '#fa5252' },
+          { category: 'เวชภัณฑ์', quantity: medicalQty.toLocaleString(), unit: 'ชุด', status: medicalQty > 500 ? 'เพียงพอ' : 'ต้องเติม', color: '#339af0' },
+          { category: 'ของใช้/สุขอนามัย', quantity: hygieneQty.toLocaleString(), unit: 'ชิ้น', status: hygieneQty > 500 ? 'เพียงพอ' : 'ต้องเติม', color: '#fab005' },
+        ]);
       }
 
     } catch (error) {
@@ -574,7 +621,6 @@ export default function AdminDashboard() {
                   {/* System Notifications */}
                   <div className={styles.chartCard}>
                     <div className={styles.chartHeader}>
-                      <h3 className={styles.chartTitle}>การแจ้งเตือนระบบ</h3>
                       <h3 className={styles.chartTitle}>การแจ้งเตือนระบบ</h3>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1407,185 +1453,91 @@ export default function AdminDashboard() {
             )}
 
             {activeTab === 'settings' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeIn 0.4s ease-out' }}>
-                <div className={styles.subTabs}>
-                  <div onClick={() => setSettingsSubTab('general')} className={`${styles.subTabItem} ${settingsSubTab === 'general' ? styles.subTabActive : ''}`}>ทั่วไป</div>
-                  <div onClick={() => setSettingsSubTab('users')} className={`${styles.subTabItem} ${settingsSubTab === 'users' ? styles.subTabActive : ''}`}>จัดการสิทธิ์ (RBAC)</div>
-                  <div onClick={() => setSettingsSubTab('thresholds')} className={`${styles.subTabItem} ${settingsSubTab === 'thresholds' ? styles.subTabActive : ''}`}>จุดแจ้งเตือน</div>
-                  <div onClick={() => setSettingsSubTab('broadcast')} className={`${styles.subTabItem} ${settingsSubTab === 'broadcast' ? styles.subTabActive : ''}`}>ประกาศข่าวสาร</div>
-                  <div onClick={() => setSettingsSubTab('archive')} className={`${styles.subTabItem} ${settingsSubTab === 'archive' ? styles.subTabActive : ''}`}>จัดการข้อมูลย้อนหลัง</div>
+              <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#343a40' }}>ตั้งค่าระบบ (Settings)</h2>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                  {/* Profile Settings */}
+                  <div className={styles.chartCard}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e7f5ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <UserCheck size={32} color="#339af0" />
+                      </div>
+                      <div>
+                        <h3 className={styles.chartTitle} style={{ marginBottom: '4px' }}>ข้อมูลส่วนตัว</h3>
+                        <p style={{ fontSize: '14px', color: '#868e96' }}>จัดการข้อมูลบัญชีของคุณ</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#495057', marginBottom: '6px' }}>ชื่อ-นามสกุล</label>
+                        <input type="text" defaultValue="Admin User" className={styles.filterInput} style={{ width: '100%' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#495057', marginBottom: '6px' }}>อีเมล</label>
+                        <input type="email" defaultValue="admin@materially.com" className={styles.filterInput} style={{ width: '100%' }} disabled />
+                      </div>
+                      <button className={styles.approveBtn} style={{ marginTop: '8px', backgroundColor: '#339af0' }}>บันทึกข้อมูล</button>
+                    </div>
+                  </div>
+
+                  {/* System Preferences */}
+                  <div className={styles.chartCard}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff4e6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Settings size={32} color="#fd7e14" />
+                      </div>
+                      <div>
+                        <h3 className={styles.chartTitle} style={{ marginBottom: '4px' }}>การตั้งค่าระบบ</h3>
+                        <p style={{ fontSize: '14px', color: '#868e96' }}>ปรับแต่งการทำงานของระบบ</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f3f5' }}>
+                        <div>
+                          <div style={{ fontWeight: '500', fontSize: '14px' }}>โหมดมืด (Dark Mode)</div>
+                          <div style={{ fontSize: '12px', color: '#adb5bd' }}>ใช้งานธีมสีเข้ม</div>
+                        </div>
+                        <div style={{ width: '40px', height: '20px', backgroundColor: '#e9ecef', borderRadius: '10px', position: 'relative' }}>
+                          <div style={{ width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: '2px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}></div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f3f5' }}>
+                        <div>
+                          <div style={{ fontWeight: '500', fontSize: '14px' }}>การแจ้งเตือนเสียง</div>
+                          <div style={{ fontSize: '12px', color: '#adb5bd' }}>เล่นเสียงเมื่อมีคำขอใหม่</div>
+                        </div>
+                        <div style={{ width: '40px', height: '20px', backgroundColor: '#40c057', borderRadius: '10px', position: 'relative' }}>
+                          <div style={{ width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%', position: 'absolute', top: '2px', right: '2px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Security & Backup */}
+                  <div className={styles.chartCard} style={{ gridColumn: '1 / -1' }}>
+                    <h3 className={styles.chartTitle} style={{ marginBottom: '20px' }}>ความปลอดภัยและการสำรองข้อมูล</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                      <div style={{ padding: '24px', border: '1px solid #dee2e6', borderRadius: '8px', textAlign: 'center' }}>
+                        <ShieldCheck size={32} color="#40c057" style={{ marginBottom: '12px' }} />
+                        <div style={{ fontWeight: '600', marginBottom: '8px' }}>เปลี่ยนรหัสผ่าน</div>
+                        <button className={styles.navItem} style={{ width: '100%', justifyContent: 'center', border: '1px solid #dee2e6' }}>แก้ไข</button>
+                      </div>
+                      <div style={{ padding: '24px', border: '1px solid #dee2e6', borderRadius: '8px', textAlign: 'center' }}>
+                        <Database size={32} color="#339af0" style={{ marginBottom: '12px' }} />
+                        <div style={{ fontWeight: '600', marginBottom: '8px' }}>สำรองฐานข้อมูล</div>
+                        <button className={styles.navItem} style={{ width: '100%', justifyContent: 'center', border: '1px solid #dee2e6' }}>Backup Now</button>
+                      </div>
+                      <div style={{ padding: '24px', border: '1px solid #dee2e6', borderRadius: '8px', textAlign: 'center' }}>
+                        <FileText size={32} color="#fab005" style={{ marginBottom: '12px' }} />
+                        <div style={{ fontWeight: '600', marginBottom: '8px' }}>Activity Logs</div>
+                        <button className={styles.navItem} style={{ width: '100%', justifyContent: 'center', border: '1px solid #dee2e6' }}>ดูประวัติ</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                {settingsSubTab === 'general' && (
-                  <div className={styles.chartCard}>
-                    <h3 className={styles.chartTitle}>ตั้งค่าทั่วไป</h3>
-                    <div style={{ padding: '20px 0', borderBottom: '1px solid #f1f3f5' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: '600' }}>โหมดการแสดงผล</div>
-                          <div style={{ fontSize: '13px', color: '#868e96' }}>เลือกธีมมืดหรือสว่างสำหรับ Dashboard</div>
-                        </div>
-                        <span style={{ color: '#868e96' }}>ธีมมืด (Dark Mode) - ล็อกไว้โดยผู้ดูแล</span>
-                      </div>
-                    </div>
-                    <div style={{ padding: '20px 0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: '600' }}>อัปเดตข้อมูลอัตโนมัติ</div>
-                          <div style={{ fontSize: '13px', color: '#868e96' }}>รีเฟรชข้อมูลทุกๆ 30 วินาที</div>
-                        </div>
-                        <button
-                          onClick={() => handleAction('สวิตช์ระบบอัปเดตอัตโนมัติ')}
-                          className={styles.approveBtn}
-                          style={{ backgroundColor: '#40c057' }}
-                        >
-                          เปิดใช้งาน
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {settingsSubTab === 'users' && (
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h3 className={styles.chartTitle}>ผู้ใช้งานในระบบ (RBAC)</h3>
-                      <button
-                        onClick={() => handleAction('เพิ่มผู้ใช้ใหม่')}
-                        className={styles.approveBtn}
-                        style={{ backgroundColor: '#4361ee' }}
-                      >
-                        + เพิ่มผู้ใช้
-                      </button>
-                    </div>
-                    <div className={styles.tableContainer} style={{ marginTop: '20px' }}>
-                      <table className={styles.customTable}>
-                        <thead>
-                          <tr>
-                            <th>ชื่อ-นามสกุล</th>
-                            <th>อีเมล</th>
-                            <th>บทบาท/สิทธิ์</th>
-                            <th>สถานะ</th>
-                            <th>เข้าใช้งานล่าสุด</th>
-                            <th>จัดการ</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {systemUsers.map((user: any) => (
-                            <tr key={user._id}>
-                              <td style={{ fontWeight: '600' }}>{user.name}</td>
-                              <td>{user.email}</td>
-                              <td>
-                                <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#e7f5ff', color: '#1971c2', fontWeight: 'bold' }}>{user.role}</span>
-                              </td>
-                              <td>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: user.isActive ? '#40c057' : '#adb5bd' }}></div>
-                                  {user.isActive ? 'ออนไลน์' : 'ออฟไลน์'}
-                                </span>
-                              </td>
-                              <td style={{ fontSize: '12px', color: '#868e96' }}>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'N/A'}</td>
-                              <td>
-                                <button
-                                  onClick={() => handleAction(`แก้ไขสิทธิ์ของ ${user.name}`)}
-                                  style={{ background: 'none', border: 'none', color: '#4361ee', cursor: 'pointer', fontSize: '14px' }}
-                                >
-                                  แก้ไขสิทธิ์
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {settingsSubTab === 'thresholds' && (
-                  <div className={styles.chartCard} style={{ maxWidth: '600px' }}>
-                    <h3 className={styles.chartTitle} style={{ marginBottom: '24px' }}>ตั้งค่าจุดแจ้งเตือนวิกฤต (Alert Thresholds)</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>จำนวนอาหารต่ำสุด (ชุด)</label>
-                        <input type="number" defaultValue={thresholds.food} className={styles.filterInput} style={{ width: '100%' }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>จำนวนน้ำดื่มต่ำสุด (แพ็ค)</label>
-                        <input type="number" defaultValue={thresholds.water} className={styles.filterInput} style={{ width: '100%' }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>จำนวนเวชภัณฑ์ต่ำสุด (ชุด)</label>
-                        <input type="number" defaultValue={thresholds.medicine} className={styles.filterInput} style={{ width: '100%' }} />
-                      </div>
-                      <button
-                        onClick={() => handleAction('บันทึกเกณฑ์การแจ้งเตือน')}
-                        className={styles.approveBtn}
-                        style={{ backgroundColor: '#4361ee', marginTop: '10px' }}
-                      >
-                        บันทึกการตั้งค่า
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {settingsSubTab === 'broadcast' && (
-                  <div className={styles.chartCard} style={{ maxWidth: '700px' }}>
-                    <h3 className={styles.chartTitle} style={{ marginBottom: '20px' }}>ประกาศข่าวสารด่วน (System Broadcast)</h3>
-                    <p style={{ color: '#868e96', fontSize: '14px', marginBottom: '20px' }}>ข้อความจะปรากฏบนหน้า Dashboard ของเจ้าหน้าที่ทุกคนทันที</p>
-                    <textarea
-                      placeholder="พิมพ์ข้อความที่ต้องการประกาศที่นี่..."
-                      style={{ width: '100%', height: '150px', padding: '16px', borderRadius: '8px', border: '1px solid #dee2e6', marginBottom: '20px', resize: 'none', fontSize: '15px' }}
-                    ></textarea>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button
-                        onClick={() => handleAction('ส่งประกาศด่วน (High Priority)')}
-                        className={styles.approveBtn}
-                        style={{ backgroundColor: '#fa5252' }}
-                      >
-                        ส่งประกาศด่วน (High Priority)
-                      </button>
-                      <button
-                        onClick={() => handleAction('ส่งประกาศปกติ')}
-                        className={styles.approveBtn}
-                        style={{ backgroundColor: '#f1f3f5', color: '#495057' }}
-                      >
-                        ส่งประกาศปกติ
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {settingsSubTab === 'archive' && (
-                  <div className={styles.chartCard}>
-                    <h3 className={styles.chartTitle} style={{ marginBottom: '24px' }}>จัดการข้อมูลย้อนหลัง (Archive & Backup)</h3>
-                    <div className={styles.inventoryGrid}>
-                      <div className={styles.inventoryCard} style={{ textAlign: 'center', padding: '30px' }}>
-                        <Save size={40} style={{ color: '#339af0', marginBottom: '16px' }} />
-                        <div style={{ fontWeight: 'bold', fontSize: '18px' }}>Backup ฐานข้อมูล</div>
-                        <p style={{ fontSize: '13px', color: '#868e96', margin: '12px 0' }}>สำรองข้อมูลทั้งหมดเก็บไว้บน Cloud</p>
-                        <button
-                          onClick={() => handleAction('สำรองฐานข้อมูลไปยัง Cloud')}
-                          className={styles.approveBtn}
-                          style={{ backgroundColor: '#339af0', width: '100%' }}
-                        >
-                          เริ่มการสำรองข้อมูล
-                        </button>
-                      </div>
-                      <div className={styles.inventoryCard} style={{ textAlign: 'center', padding: '30px' }}>
-                        <FileText size={40} style={{ color: '#40c057', marginBottom: '16px' }} />
-                        <div style={{ fontWeight: 'bold', fontSize: '18px' }}>ส่งออกรายงานสรุป</div>
-                        <p style={{ fontSize: '13px', color: '#868e96', margin: '12px 0' }}>Export ข้อมูลศูนย์และสต็อกเป็น Excel/PDF</p>
-                        <button
-                          onClick={() => handleAction('ส่งออกรายงานสรุป (Excel/PDF)')}
-                          className={styles.approveBtn}
-                          style={{ backgroundColor: '#40c057', width: '100%' }}
-                        >
-                          ดาวน์โหลดรายงาน
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
             {/* Modal รายละเอียดการแจ้งเตือน */}

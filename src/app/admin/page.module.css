@@ -1,0 +1,193 @@
+@'
+.root {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  color: #e6eef8;
+  text-align: center;
+  min-height: 100vh;
+}
+
+.brandArea {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.logoBox {
+  width: 64px;
+  height: 64px;
+  background: var(--primary, #137fec);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 8px 30px rgba(19, 127, 236, 0.18);
+  font-size: 32px;
+}
+
+.brandText h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.brandText p {
+  margin: 0;
+  color: #9bb0c6;
+}
+
+.card {
+  background: rgba(25, 38, 51, 0.6);
+  border: 1px solid #324d67;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.header {
+  text-align: left;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(50, 77, 103, 0.5);
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.subtitle {
+  margin: 6px 0 0 0;
+  color: #9bb0c6;
+  font-size: 13px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.statCard {
+  background: rgba(19, 127, 236, 0.06);
+  border: 1px solid rgba(50, 77, 103, 0.6);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.statLabel {
+  margin: 0;
+  color: #9bb0c6;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statValue {
+  margin: 8px 0 0 0;
+  font-size: 22px;
+  font-weight: 900;
+  color: #137fec;
+}
+
+.section {
+  padding: 12px;
+  background: rgba(19, 127, 236, 0.02);
+  border: 1px solid rgba(50, 77, 103, 0.5);
+  border-radius: 10px;
+  text-align: left;
+}
+
+.sectionTitle {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.suppliesList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.supplyItem {
+  padding: 10px;
+  background: rgba(15, 22, 30, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(50, 77, 103, 0.4);
+}
+
+.supplyName {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.supplyInfo {
+  color: #9bb0c6;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.primaryBtn {
+  background: var(--primary, #137fec);
+  color: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  background: transparent;
+  color: #ef5350;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 1px solid rgba(239, 83, 80, 0.3);
+  cursor: pointer;
+}
+
+.footer {
+  color: #9bb0c6;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .root {
+    gap: 14px;
+  }
+  .brandText h1 {
+    font-size: 22px;
+  }
+  .card {
+    padding: 18px;
+    gap: 12px;
+  }
+}
+'@ | Set-Content -Path .\src\app\admin\page.module.css -Encoding UTF8

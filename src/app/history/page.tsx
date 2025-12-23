@@ -40,7 +40,7 @@ function mapRequestToActivity(request: Request): ActivityLog[] {
         unit: item.itemId.unit,
         user: request.requestedBy.name,
         timestamp: new Date(request.createdAt),
-        details: `ศูนย์พักพิง: ${request.shelterId.name}`,
+        details: `ศูนย์พักพิง: ${typeof request.shelterId === 'object' ? request.shelterId.name : request.shelterId}`,
         status: request.status === 'pending' ? 'รอดำเนินการ' :
             request.status === 'approved' ? 'อนุมัติ' :
                 request.status === 'transferred' ? 'โอนแล้ว' : 'ปฏิเสธ'

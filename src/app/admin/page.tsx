@@ -392,7 +392,97 @@ export default function AdminDashboard() {
   const [inventoryCategory, setInventoryCategory] = useState('ทั้งหมด');
   const [inventoryStatus, setInventoryStatus] = useState('สถานะทั้งหมด');
 
-  // ข้อมูลสินค้าในคลังแบบใหม่
+  // Admin Inventory State (Same as User Inventory)
+  const [adminInventoryItems, setAdminInventoryItems] = useState<Array<{
+    id: string;
+    name: string;
+    categoryLabel: string;
+    quantity: number;
+    maxQuantity: number;
+    unit: string;
+  }>>([]);
+
+  // Load Admin Inventory Data (Same logic as User Inventory)
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const loadAdminInventory = async () => {
+      try {
+        const warehousesResult = await getWarehouses();
+
+        if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
+          return;
+        }
+
+        const allStockItems: Map<string, { itemName: string; totalQuantity: number; maxQuantity: number; unit: string }> = new Map();
+
+        for (const warehouse of warehousesResult.data) {
+          const stockResult = await getStockStatus(warehouse._id);
+
+          if (stockResult.success && stockResult.data && stockResult.data.items) {
+            for (const stockItem of stockResult.data.items) {
+              const existing = allStockItems.get(stockItem.itemId);
+              if (existing) {
+                existing.totalQuantity += stockItem.quantity;
+                existing.maxQuantity += stockItem.minAlert * 3;
+              } else {
+                allStockItems.set(stockItem.itemId, {
+                  itemName: stockItem.itemName,
+                  totalQuantity: stockItem.quantity,
+                  maxQuantity: stockItem.minAlert * 3,
+                  unit: stockItem.unit
+                });
+              }
+            }
+          }
+        }
+
+        const inventoryItems = Array.from(allStockItems.entries()).map(([itemId, data]) => {
+          const name = data.itemName.toLowerCase();
+          let categoryLabel = 'อุปกรณ์ทั่วไป';
+
+          if (name.includes('ข้าว') || name.includes('นม') || name.includes('อาหาร') || name.includes('rice') || name.includes('food') || name.includes('milk') || name.includes('bread') || name.includes('egg') || name.includes('น้ำ') || name.includes('water')) {
+            categoryLabel = 'อาหารและเครื่องดื่ม';
+          } else if (name.includes('เสื้อ') || name.includes('ผ้า') || name.includes('blanket') || name.includes('shirt') || name.includes('pants') || name.includes('clothing')) {
+            categoryLabel = 'เสื้อผ้าและผ้าห่ม';
+          } else if (name.includes('ยา') || name.includes('พลาส') || name.includes('แอลกอฮอล') || name.includes('medicine') || name.includes('first aid') || name.includes('paracetamol') || name.includes('diarrheal')) {
+            categoryLabel = 'ยาและเวชภัณฑ์';
+          } else if (name.includes('สบู่') || name.includes('แปรง') || name.includes('soap') || name.includes('toothbrush') || name.includes('towel')) {
+            categoryLabel = 'อุปกรณ์สุขอนามัย';
+          }
+
+          return {
+            id: itemId,
+            name: data.itemName,
+            categoryLabel,
+            quantity: data.totalQuantity,
+            maxQuantity: data.maxQuantity,
+            unit: data.unit
+          };
+        });
+
+        setAdminInventoryItems(inventoryItems);
+      } catch (err) {
+        console.error('Error loading admin inventory:', err);
+      }
+    };
+
+    loadAdminInventory();
+  }, [isMounted]);
+
+  // Filter Admin Inventory (Same logic as User Inventory)
+  const adminFilteredInventory = adminInventoryItems.filter(item => {
+    const matchSearch = item.name.toLowerCase().includes(inventorySearch.toLowerCase());
+    const matchCategory = inventoryCategory === 'ทั้งหมด' || item.categoryLabel === inventoryCategory;
+
+    const percentage = (item.quantity / item.maxQuantity) * 100;
+    const status = item.quantity === 0 ? 'หมด' : percentage <= 30 ? 'ใกล้หมด' : 'มี';
+    const matchStatus = inventoryStatus === 'สถานะทั้งหมด' || status === inventoryStatus;
+
+    return matchSearch && matchCategory && matchStatus;
+  });
+
+  // ข้อมูลสินค้าในคลังแบบใหม่ (Legacy - kept for compatibility)
   const newInventoryData = [
     { id: 1, name: 'Paracetamol 500mg', category: 'ยาและเวชภัณฑ์', qty: 200, target: 30, unit: 'box', percentage: 667, status: 'ปกติ' },
     { id: 2, name: 'Blanket', category: 'เสื้อผ้าและผ้าห่ม', qty: 800, target: 60, unit: 'piece', percentage: 1333, status: 'ปกติ' },
@@ -900,19 +990,31 @@ export default function AdminDashboard() {
                 <div className={styles.inventorySummaryGrid}>
                   <div className={styles.inventorySummaryCard}>
                     <div className={styles.summaryLabel}>ทั้งหมด</div>
-                    <div className={styles.summaryValue}>16</div>
+                    <div className={styles.summaryValue}>{adminInventoryItems.length}</div>
                   </div>
                   <div className={styles.inventorySummaryCard}>
                     <div className={styles.summaryLabel}>มี</div>
-                    <div className={styles.summaryValue} style={{ color: '#22c55e' }}>16</div>
+                    <div className={styles.summaryValue} style={{ color: '#22c55e' }}>
+                      {adminInventoryItems.filter(i => {
+                        const percentage = (i.quantity / i.maxQuantity) * 100;
+                        return percentage > 30;
+                      }).length}
+                    </div>
                   </div>
                   <div className={styles.inventorySummaryCard}>
                     <div className={styles.summaryLabel}>ใกล้หมด</div>
-                    <div className={styles.summaryValue} style={{ color: '#f59e0b' }}>0</div>
+                    <div className={styles.summaryValue} style={{ color: '#f59e0b' }}>
+                      {adminInventoryItems.filter(i => {
+                        const percentage = (i.quantity / i.maxQuantity) * 100;
+                        return percentage > 0 && percentage <= 30;
+                      }).length}
+                    </div>
                   </div>
                   <div className={styles.inventorySummaryCard}>
                     <div className={styles.summaryLabel}>หมด</div>
-                    <div className={styles.summaryValue} style={{ color: '#ef4444' }}>0</div>
+                    <div className={styles.summaryValue} style={{ color: '#ef4444' }}>
+                      {adminInventoryItems.filter(i => i.quantity === 0).length}
+                    </div>
                   </div>
                 </div>
 
@@ -947,7 +1049,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setInventoryStatus(e.target.value)}
                   >
                     <option>สถานะทั้งหมด</option>
-                    <option>ปกติ</option>
+                    <option>มี</option>
                     <option>ใกล้หมด</option>
                     <option>หมด</option>
                   </select>
@@ -955,47 +1057,52 @@ export default function AdminDashboard() {
 
                 {/* Item Grid */}
                 <div className={styles.itemGrid}>
-                  {filteredInventory.map(item => (
-                    <div key={item.id} className={styles.itemCardDark}>
-                      <div className={styles.itemCardHeader}>
-                        <div className={styles.itemIconWrapper}>
-                          <Package size={24} />
+                  {adminFilteredInventory.map(item => {
+                    const percentage = (item.quantity / item.maxQuantity) * 100;
+                    const status = item.quantity === 0 ? 'หมด' : percentage <= 30 ? 'ใกล้หมด' : 'มี';
+
+                    return (
+                      <div key={item.id} className={styles.itemCardDark}>
+                        <div className={styles.itemCardHeader}>
+                          <div className={styles.itemIconWrapper}>
+                            <Package size={24} />
+                          </div>
+                          <div className={`${styles.itemStatusBadgeSmall} ${status === 'มี' ? '' : status === 'ใกล้หมด' ? styles.badgeWarning : styles.badgeCritical}`} style={{
+                            backgroundColor: status === 'มี' ? 'rgba(34, 197, 94, 0.1)' : status === 'ใกล้หมด' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: status === 'มี' ? '#22c55e' : status === 'ใกล้หมด' ? '#f59e0b' : '#ef4444'
+                          }}>
+                            {status}
+                          </div>
                         </div>
-                        <div className={`${styles.itemStatusBadgeSmall} ${item.status === 'ปกติ' ? '' : item.status === 'ใกล้หมด' ? styles.badgeWarning : styles.badgeCritical}`} style={{
-                          backgroundColor: item.status === 'ปกติ' ? 'rgba(34, 197, 94, 0.1)' : item.status === 'ใกล้หมด' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                          color: item.status === 'ปกติ' ? '#22c55e' : item.status === 'ใกล้หมด' ? '#f59e0b' : '#ef4444'
-                        }}>
-                          {item.status === 'ปกติ' ? 'มี' : item.status}
+
+                        <h3 className={styles.itemTitleDark}>{item.name}</h3>
+                        <p className={styles.itemCategoryDark}>{item.categoryLabel}</p>
+
+                        <div className={styles.itemStatsContainer}>
+                          <div>
+                            <span className={styles.itemMainQty}>{item.quantity}</span>
+                            <span className={styles.itemSubQty}> / {item.maxQuantity} {item.unit}</span>
+                          </div>
+                          <div className={styles.itemPercentage}>{Math.round(percentage)}%</div>
                         </div>
-                      </div>
 
-                      <h3 className={styles.itemTitleDark}>{item.name}</h3>
-                      <p className={styles.itemCategoryDark}>{item.category}</p>
-
-                      <div className={styles.itemStatsContainer}>
-                        <div>
-                          <span className={styles.itemMainQty}>{item.qty}</span>
-                          <span className={styles.itemSubQty}> / {item.target} {item.unit}</span>
+                        <div className={styles.inventoryProgressBar}>
+                          <div
+                            className={styles.inventoryProgressFill}
+                            style={{
+                              width: `${Math.min(percentage, 100)}%`,
+                              backgroundColor: status === 'มี' ? '#22c55e' : status === 'ใกล้หมด' ? '#f59e0b' : '#ef4444'
+                            }}
+                          ></div>
                         </div>
-                        <div className={styles.itemPercentage}>{item.percentage}%</div>
-                      </div>
 
-                      <div className={styles.inventoryProgressBar}>
-                        <div
-                          className={styles.inventoryProgressFill}
-                          style={{
-                            width: `${Math.min(item.percentage, 100)}%`,
-                            backgroundColor: item.status === 'ปกติ' ? '#22c55e' : item.status === 'ใกล้หมด' ? '#f59e0b' : '#ef4444'
-                          }}
-                        ></div>
+                        <div className={styles.itemFooterStatus}>สถานะ: {status}</div>
                       </div>
-
-                      <div className={styles.itemFooterStatus}>สถานะ: {item.status}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                {filteredInventory.length === 0 && (
+                {adminFilteredInventory.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '48px', color: '#868e96' }}>
                     ไม่พบข้อมูลที่ค้นหา
                   </div>

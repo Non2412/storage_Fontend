@@ -18,8 +18,8 @@ import styles from './admin.module.css';
 import {
   getDashboardOverview, getShelterStatus, getRequests, getLowStockItems,
   getItems, getUsers, isAuthenticated, getCurrentUser,
-  logout, approveRequest, getShelters, getDistributionTasks,
-  getWarehouses, getStockStatus,
+  logout, approveRequest, transferRequest, getShelters, getDistributionTasks,
+  getWarehouses, getStockStatus, getRequestDetail,
   type DashboardOverview,
   type ShelterStatus, type Request, type User, type Shelter, type StockItem
 } from '@/lib/api';
@@ -177,18 +177,130 @@ export default function AdminDashboard() {
   const [stockData, setStockData] = useState<any[]>([]);
 
   const handleApprove = async (id: string) => {
-    if (!confirm('ยืนยันการอนุมัติคำร้อง?')) return;
+    if (!confirm('ยืนยันการอนุมัติและโอนของ? (Stock จะถูกตัดออกจากคลังทันที)')) return;
 
     try {
-      // สำหรับ Demo เราจะเลือกคลังแรกหรือส่งค่าว่างไปก่อน
-      const result = await approveRequest(id, [], "");
+      // ดึงข้อมูล request ใหม่จาก API เพื่อให้ได้ข้อมูลครบถ้วน
+      const requestRes = await getRequestDetail(id);
+      console.log('Request detail from API:', requestRes);
+      
+      if (!requestRes.success || !requestRes.data) {
+        alert('ไม่พบคำร้องขอ');
+        return;
+      }
+
+      const requestToApprove = requestRes.data;
+
+      if (!requestToApprove.items || requestToApprove.items.length === 0) {
+        alert('ไม่พบรายการสิ่งของในคำร้อง');
+        return;
+      }
+
+      // ดึงรายการ warehouse
+      const warehousesRes = await getWarehouses();
+      if (!warehousesRes.success || !warehousesRes.data || warehousesRes.data.length === 0) {
+        alert('ไม่พบข้อมูลคลังสินค้า');
+        return;
+      }
+
+      // ใช้คลังกลางศรีสะเกษ (ID: 69480e65cfe460b6bd8ecc2b) หรือคลังสุดท้ายในรายการ
+      // เพราะคลังนี้มี Stock หลัก
+      const mainWarehouse = warehousesRes.data.find(w => w._id === '69480e65cfe460b6bd8ecc2b');
+      const warehouseId = mainWarehouse?._id || warehousesRes.data[warehousesRes.data.length - 1]._id;
+
+      // สร้าง items array จาก request โดยอนุมัติจำนวนที่ขอทั้งหมด
+      const itemsToApprove = requestToApprove.items.map(item => {
+        // Handle both cases: itemId as object or string
+        let extractedItemId: string;
+        if (typeof item.itemId === 'object' && item.itemId !== null) {
+          extractedItemId = item.itemId._id;
+        } else {
+          extractedItemId = item.itemId as string;
+        }
+        
+        console.log('Processing item:', item);
+        console.log('Extracted itemId:', extractedItemId);
+        
+        return {
+          itemId: extractedItemId,
+          quantityApproved: item.quantityRequested
+        };
+      });
+
+      // Validate items before sending
+      const hasInvalidItems = itemsToApprove.some(i => !i.itemId || i.itemId === 'undefined');
+      if (hasInvalidItems) {
+        console.error('Invalid items detected:', itemsToApprove);
+        alert('ข้อมูล items ไม่ถูกต้อง กรุณาลองใหม่');
+        return;
+      }
+      
+      console.log('Items to approve:', itemsToApprove);
+      console.log('Warehouse ID:', warehouseId);
+
+      // ขั้นตอนที่ 1: อนุมัติ
+      const approveResult = await approveRequest(id, itemsToApprove, warehouseId);
+      if (!approveResult.success) {
+        alert(approveResult.message || 'เกิดข้อผิดพลาดในการอนุมัติ');
+        return;
+      }
+
+      // ขั้นตอนที่ 2: โอนของทันที (Stock จะถูกตัด)
+      const itemsToTransfer = requestToApprove.items.map(item => ({
+        itemId: typeof item.itemId === 'object' ? item.itemId._id : item.itemId,
+        quantityTransferred: item.quantityRequested
+      }));
+
+      const transferResult = await transferRequest(id, itemsToTransfer, warehouseId);
+      if (transferResult.success) {
+        alert('✅ อนุมัติและโอนของเรียบร้อยแล้ว! Stock ถูกตัดออกจากคลัง');
+        fetchInitialData(); // Refresh data
+      } else {
+        alert('อนุมัติสำเร็จ แต่โอนของไม่สำเร็จ: ' + (transferResult.message || 'เกิดข้อผิดพลาด'));
+        fetchInitialData();
+      }
+    } catch (error) {
+      console.error('Approve & Transfer error:', error);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
+  const handleTransfer = async (id: string) => {
+    if (!confirm('ยืนยันการโอนสิ่งของ? (Stock จะถูกตัดออกจากคลัง)')) return;
+
+    try {
+      // หา request ที่ต้องการโอน (จาก approvedRequests)
+      const requestToTransfer = approvedRequests.find(r => r._id === id);
+      if (!requestToTransfer) {
+        alert('ไม่พบคำร้องขอ');
+        return;
+      }
+
+      // ดึงรายการ warehouse
+      const warehousesRes = await getWarehouses();
+      if (!warehousesRes.success || !warehousesRes.data || warehousesRes.data.length === 0) {
+        alert('ไม่พบข้อมูลคลังสินค้า');
+        return;
+      }
+
+      // ใช้คลังแรก
+      const warehouseId = warehousesRes.data[0]._id;
+
+      // สร้าง items array สำหรับ transfer
+      const itemsToTransfer = requestToTransfer.items.map(item => ({
+        itemId: typeof item.itemId === 'object' ? item.itemId._id : item.itemId,
+        quantityTransferred: item.quantityApproved || item.quantityRequested
+      }));
+
+      const result = await transferRequest(id, itemsToTransfer, warehouseId);
       if (result.success) {
-        alert('อนุมัติคำร้องขอเรียบร้อยแล้ว');
+        alert('โอนสิ่งของเรียบร้อยแล้ว! Stock ถูกตัดออกจากคลัง');
         fetchInitialData(); // Refresh data
       } else {
         alert(result.message || 'เกิดข้อผิดพลาด');
       }
     } catch (error) {
+      console.error('Transfer error:', error);
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     }
   };
@@ -679,7 +791,7 @@ export default function AdminDashboard() {
                             onClick={() => handleApprove(req._id)}
                             className={styles.approveBtn}
                           >
-                            อนุมัติ
+                            <Truck size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
                           </button>
                         </div>
                       ))}
@@ -1541,7 +1653,7 @@ export default function AdminDashboard() {
                                 className={styles.approveBtn}
                                 style={{ padding: '6px 12px', fontSize: '13px' }}
                               >
-                                อนุมัติ
+                                <Truck size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
                               </button>
                             </td>
                           </tr>

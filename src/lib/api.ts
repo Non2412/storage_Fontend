@@ -62,6 +62,14 @@ async function apiCall<T = unknown>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Debug: Log request body for approve/transfer endpoints
+  if (endpoint.includes('/approve') || endpoint.includes('/transfer')) {
+    console.log('=== API Request Debug ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Body:', options.body);
+    console.log('Headers:', headers);
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,

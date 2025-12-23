@@ -43,7 +43,7 @@ function mapRequestToActivity(request: Request): ActivityLog[] {
             unit: item.itemId.unit,
             user: request.requestedBy?.name || 'ไม่ทราบชื่อ',
             timestamp: new Date(request.createdAt),
-            details: `ศูนย์พักพิง: ${request.shelterId?.name || 'ไม่ทราบ'}`,
+            details: `ศูนย์พักพิง: ${typeof request.shelterId === 'object' ? request.shelterId.name : request.shelterId || 'ไม่ทราบ'}`,
             status: request.status === 'pending' ? 'รอดำเนินการ' :
                 request.status === 'approved' ? 'อนุมัติแล้ว' :
                     request.status === 'transferred' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'
@@ -99,7 +99,7 @@ export default function HistoryPage() {
                 result.data.forEach(request => {
                     // Skip requests with null requestedBy (deleted user)
                     if (!request.requestedBy) return;
-                    
+
                     // Only show requests from current user
                     if (request.requestedBy._id === user.id || request.requestedBy.email === user.email) {
                         activities.push(...mapRequestToActivity(request));

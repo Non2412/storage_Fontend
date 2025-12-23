@@ -61,6 +61,8 @@ async function handleProxy(
       }
     }
 
+    console.log(`Proxying ${request.method} to: ${targetUrl}`);
+
     // Make request to backend
     const response = await fetch(targetUrl, {
       method: request.method,
@@ -75,7 +77,7 @@ async function handleProxy(
     return new NextResponse(data, {
       status: response.status,
       headers: {
-        'Content-Type': response.headers.get('Content-Type') || 'application/json',
+        'Content-Type': response.headers.get('Content-Type') || 'text/plain',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',

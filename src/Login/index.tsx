@@ -71,10 +71,14 @@ export default function Login() {
     setIsLoading(true);
     try {
       const result = await apiLogin(email.trim().toLowerCase(), password);
-      
+
       if (result.success && result.data) {
-        // redirect to dashboard
-        window.location.href = "/dashboard";
+        // Redirect based on role from backend
+        if (result.data.user.role === 'admin') {
+          window.location.href = "/admin";
+        } else {
+          window.location.href = "/dashboard";
+        }
       } else {
         setMessage(result.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
       }

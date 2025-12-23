@@ -115,7 +115,7 @@ export default function InventoryPage() {
     try {
       // First, get all warehouses
       const warehousesResult = await getWarehouses();
-      
+
       if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
         setError('ไม่พบข้อมูลคลังสินค้า');
         return;
@@ -126,7 +126,7 @@ export default function InventoryPage() {
 
       for (const warehouse of warehousesResult.data) {
         const stockResult = await getStockStatus(warehouse._id);
-        
+
         if (stockResult.success && stockResult.data && stockResult.data.items) {
           for (const stockItem of stockResult.data.items) {
             const existing = allStockItems.get(stockItem.itemId);
@@ -222,7 +222,8 @@ export default function InventoryPage() {
         [{
           itemId: selectedItem.id,
           quantityRequested: requestQuantity
-        }]
+        }],
+        requestReason
       );
 
       if (result.success) {
@@ -231,7 +232,7 @@ export default function InventoryPage() {
         setSelectedItem(null);
         setRequestReason('');
       } else {
-        alert(result.message || 'ไม่สามารถส่งคำขอได้');
+        alert(result.message || 'ไม่สามารถส่งคำขอได้: เซิร์ฟเวอร์ปฏิเสธการดำเนินการ');
       }
     } catch (err) {
       console.error('Error submitting request:', err);
@@ -492,7 +493,7 @@ export default function InventoryPage() {
                     <option value="">-- เลือกศูนย์พักพิง --</option>
                     {shelters.map((shelter) => (
                       <option key={shelter._id} value={shelter._id}>
-                        {shelter.name} ({shelter.province})
+                        {shelter.name || 'ไม่ระบุชื่อ'} {shelter.province ? `(${shelter.province})` : ''}
                       </option>
                     ))}
                   </select>

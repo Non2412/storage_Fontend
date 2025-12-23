@@ -335,7 +335,7 @@ export interface Request {
   shelterId: {
     _id: string;
     name: string;
-  };
+  } | string;
   requestedBy: {
     _id: string;
     name: string;

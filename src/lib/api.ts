@@ -352,6 +352,7 @@ export interface Request {
     quantityTransferred?: number;
   }[];
   status: 'pending' | 'approved' | 'transferred' | 'rejected';
+  reason?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="th" suppressHydrationWarning>
-      <body className={`${sarabun.variable} font-sans`} style={{ fontFamily: 'var(--font-sarabun), sans-serif' }} suppressHydrationWarning>
+      <body className={`${sarabun.variable}`} style={{ fontFamily: 'var(--font-sarabun), sans-serif' }} suppressHydrationWarning>
         {children}
       </body>
     </html>

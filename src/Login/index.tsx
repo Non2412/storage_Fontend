@@ -70,8 +70,22 @@ export default function Login() {
 
     setIsLoading(true);
     try {
+      // Admin Override
+      if (email.trim().toLowerCase() === "admin@sisaket.go.th" && password === "admin123") {
+        console.log("Admin login matched");
+        localStorage.setItem("ndr_token", "admin-mock-token");
+        localStorage.setItem("ndr_currentUser", JSON.stringify({
+          id: "admin-id",
+          name: "Administrator",
+          email: "admin@sisaket.go.th",
+          role: "admin"
+        }));
+        window.location.href = "/admin";
+        return;
+      }
+
       const result = await apiLogin(email.trim().toLowerCase(), password);
-      
+
       if (result.success && result.data) {
         // redirect to dashboard
         window.location.href = "/dashboard";

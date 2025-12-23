@@ -343,7 +343,7 @@ export interface Request {
   shelterId: {
     _id: string;
     name: string;
-  };
+  } | string;
   requestedBy: {
     _id: string;
     name: string;
@@ -360,6 +360,7 @@ export interface Request {
     quantityTransferred?: number;
   }[];
   status: 'pending' | 'approved' | 'transferred' | 'rejected';
+  reason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -384,7 +385,9 @@ export async function getRequests(status?: string, shelterId?: string): Promise<
       // Filter local requests by status and shelterId if params exist
       const filteredLocal = localRequests.filter(req => {
         const statusMatch = !status || req.status === status;
-        const shelterMatch = !shelterId || (req.shelterId && typeof req.shelterId === 'object' && (req.shelterId as any)._id === shelterId) || req.shelterId === shelterId;
+        const shelterMatch = !shelterId ||
+          (typeof req.shelterId === 'object' && req.shelterId?._id === shelterId) ||
+          (typeof req.shelterId === 'string' && req.shelterId === shelterId);
         return statusMatch && shelterMatch;
       });
 

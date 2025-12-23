@@ -782,7 +782,7 @@ export default function AdminDashboard() {
                       {requests.map(req => (
                         <div key={req._id} className={styles.requestItem}>
                           <div>
-                            <div style={{ fontWeight: '600', fontSize: '14px' }}>{req.shelterId?.name || 'Unknown Shelter'}</div>
+                            <div style={{ fontWeight: '600', fontSize: '14px' }}>{typeof req.shelterId === 'object' ? req.shelterId.name : req.shelterId || 'Unknown Shelter'}</div>
                             <div style={{ fontSize: '12px', color: '#868e96' }}>
                               {req.items.map(i => i.itemId?.name).join(', ')}
                             </div>
@@ -1570,7 +1570,7 @@ export default function AdminDashboard() {
                             <td style={{ fontSize: '13px', color: '#868e96' }}>
                               {new Date(req.updatedAt || req.createdAt).toLocaleString('th-TH')}
                             </td>
-                            <td style={{ fontWeight: '600' }}>{req.shelterId?.name || 'Unknown'}</td>
+                            <td style={{ fontWeight: '600' }}>{typeof req.shelterId === 'object' ? req.shelterId?.name : req.shelterId || 'Unknown'}</td>
                             <td>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                 {req.items.map((item, idx) => (
@@ -1633,7 +1633,7 @@ export default function AdminDashboard() {
                             <td style={{ fontSize: '13px', color: '#868e96' }}>
                               {new Date(req.createdAt).toLocaleString('th-TH')}
                             </td>
-                            <td style={{ fontWeight: '600' }}>{req.shelterId?.name || 'Unknown'}</td>
+                            <td style={{ fontWeight: '600' }}>{typeof req.shelterId === 'object' ? req.shelterId?.name : req.shelterId || 'Unknown'}</td>
                             <td>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                 {req.items.map((item, idx) => (

@@ -152,9 +152,9 @@ export default function DashboardPage() {
                   {isLoading ? '...' : `${dashboardData?.shelters?.avgOccupancy ?? 0}%`}
                 </div>
               </div>
-              <div className={styles.detailLabel}>อัตราการใช้งานเฉลี่ย</div>
-              <div className={styles.detailValue}>{isLoading ? '...' : `${dashboardData?.shelters?.avgOccupancy ?? 0}%`}</div>
-              <div className={styles.detailSubtext}>ศูนย์เกือบเต็ม {isLoading ? '...' : dashboardData?.shelters?.nearlyFull ?? 0} แห่ง</div>
+              <div className={styles.detailLabel}>ครอบครัวที่เข้าพักทั้งหมด</div>
+              <div className={styles.detailValue}>156</div>
+              <div className={styles.detailSubtext}>เปิดใช้งาน 140 ศูนย์</div>
             </div>
 
             <div className={styles.detailCard}>

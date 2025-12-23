@@ -32,19 +32,22 @@ const TYPE_COLORS = {
 
 // Map API Request to ActivityLog
 function mapRequestToActivity(request: Request): ActivityLog[] {
-    return request.items.map(item => ({
-        id: `${request._id}-${item.itemId._id}`,
-        type: 'request' as const,
-        itemName: item.itemId.name,
-        quantity: item.quantityRequested,
-        unit: item.itemId.unit,
-        user: request.requestedBy.name,
-        timestamp: new Date(request.createdAt),
-        details: `ศูนย์พักพิง: ${request.shelterId.name}`,
-        status: request.status === 'pending' ? 'รอดำเนินการ' :
-            request.status === 'approved' ? 'อนุมัติ' :
-                request.status === 'transferred' ? 'โอนแล้ว' : 'ปฏิเสธ'
-    }));
+    // Filter out items with null itemId (deleted items)
+    return request.items
+        .filter(item => item.itemId !== null)
+        .map(item => ({
+            id: `${request._id}-${item.itemId._id}`,
+            type: 'request' as const,
+            itemName: item.itemId.name,
+            quantity: item.quantityRequested,
+            unit: item.itemId.unit,
+            user: request.requestedBy?.name || 'ไม่ทราบชื่อ',
+            timestamp: new Date(request.createdAt),
+            details: `ศูนย์พักพิง: ${request.shelterId?.name || 'ไม่ทราบ'}`,
+            status: request.status === 'pending' ? 'รอดำเนินการ' :
+                request.status === 'approved' ? 'อนุมัติแล้ว' :
+                    request.status === 'transferred' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'
+        }));
 }
 
 export default function HistoryPage() {
@@ -94,6 +97,9 @@ export default function HistoryPage() {
                 // Map requests to activity logs
                 const activities: ActivityLog[] = [];
                 result.data.forEach(request => {
+                    // Skip requests with null requestedBy (deleted user)
+                    if (!request.requestedBy) return;
+                    
                     // Only show requests from current user
                     if (request.requestedBy._id === user.id || request.requestedBy.email === user.email) {
                         activities.push(...mapRequestToActivity(request));

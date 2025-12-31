@@ -50,7 +50,7 @@
 
 .headerButton {
   padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(99, 102, 241, 0.05);
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text-secondary);
@@ -110,7 +110,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.05), transparent);
+  background: linear-gradient(to bottom right, rgba(99, 102, 241, 0.03), transparent);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -118,7 +118,7 @@
 .statCardTop:hover {
   transform: translateY(-8px);
   border-color: var(--border-highlight);
-  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.1);
 }
 
 .statCardTop:hover::before {
@@ -155,12 +155,12 @@
   letter-spacing: 0.5px;
   padding: 8px 16px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(99, 102, 241, 0.05);
   transition: all 0.3s ease;
 }
 
 .statCardTop:hover .statLabel {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(99, 102, 241, 0.1);
   color: var(--text-primary);
 }
 
@@ -187,7 +187,7 @@
 
 .detailCard:hover {
   border-color: var(--border-highlight);
-  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
   transform: translateY(-4px);
 }
 

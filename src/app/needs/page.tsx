@@ -20,9 +20,12 @@ export default function NeedsPage() {
         urgency: 'normal',
         description: ''
     });
+    const [shelterSearchQuery, setShelterSearchQuery] = useState('');
+    const [showShelterDropdown, setShowShelterDropdown] = useState(false);
+    const [itemSearchQuery, setItemSearchQuery] = useState('');
+    const [showItemDropdown, setShowItemDropdown] = useState(false);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsMounted(true);
     }, []);
 
@@ -108,6 +111,10 @@ export default function NeedsPage() {
                     urgency: 'normal',
                     description: ''
                 });
+                setShelterSearchQuery('');
+                setShowShelterDropdown(false);
+                setItemSearchQuery('');
+                setShowItemDropdown(false);
             } else {
                 alert(result.message || 'ไม่สามารถบันทึกข้อมูลได้');
             }
@@ -150,21 +157,95 @@ export default function NeedsPage() {
                                 <label className={styles.label}>
                                     ศูนย์พักพิง <span className={styles.required}>*</span>
                                 </label>
-                                <select
-                                    name="shelterId"
-                                    value={formData.shelterId}
-                                    onChange={handleChange}
-                                    className={styles.select}
-                                    required
-                                    disabled={submitting}
-                                >
-                                    <option value="">เลือกศูนย์พักพิง</option>
-                                    {shelters.map(shelter => (
-                                        <option key={shelter._id} value={shelter._id}>
-                                            {shelter.name} - {shelter.district}, {shelter.province}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type="text"
+                                        name="shelterSearch"
+                                        value={shelterSearchQuery}
+                                        onChange={(e) => {
+                                            setShelterSearchQuery(e.target.value);
+                                            setShowShelterDropdown(true);
+                                        }}
+                                        onFocus={() => setShowShelterDropdown(true)}
+                                        className={styles.select}
+                                        placeholder="พิมพ์เพื่อค้นหาศูนย์พักพิง..."
+                                        disabled={submitting}
+                                        autoComplete="off"
+                                    />
+                                    {showShelterDropdown && (
+                                        <>
+                                            <div
+                                                style={{
+                                                    position: 'fixed',
+                                                    top: 0,
+                                                    left: 0,
+                                                    right: 0,
+                                                    bottom: 0,
+                                                    zIndex: 9
+                                                }}
+                                                onClick={() => setShowShelterDropdown(false)}
+                                            />
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    right: 0,
+                                                    backgroundColor: 'white',
+                                                    border: '1px solid #dee2e6',
+                                                    borderRadius: '8px',
+                                                    marginTop: '4px',
+                                                    maxHeight: '300px',
+                                                    overflowY: 'auto',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                    zIndex: 10
+                                                }}
+                                            >
+                                                {shelters
+                                                    .filter(shelter =>
+                                                        shelter.name.toLowerCase().includes(shelterSearchQuery.toLowerCase()) ||
+                                                        shelter.province.toLowerCase().includes(shelterSearchQuery.toLowerCase()) ||
+                                                        shelter.district.toLowerCase().includes(shelterSearchQuery.toLowerCase())
+                                                    )
+                                                    .map(shelter => (
+                                                        <div
+                                                            key={shelter._id}
+                                                            onClick={() => {
+                                                                setFormData(prev => ({ ...prev, shelterId: shelter._id }));
+                                                                setShelterSearchQuery(`${shelter.name} - ${shelter.district}, ${shelter.province}`);
+                                                                setShowShelterDropdown(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '12px 16px',
+                                                                cursor: 'pointer',
+                                                                borderBottom: '1px solid #f1f3f5',
+                                                                transition: 'background-color 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                                        >
+                                                            <div style={{ fontWeight: '600', fontSize: '14px', color: '#212529' }}>
+                                                                {shelter.name}
+                                                            </div>
+                                                            <div style={{ fontSize: '12px', color: '#868e96', marginTop: '2px' }}>
+                                                                {shelter.district}, {shelter.province}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                }
+                                                {shelters.filter(shelter =>
+                                                    shelter.name.toLowerCase().includes(shelterSearchQuery.toLowerCase()) ||
+                                                    shelter.province.toLowerCase().includes(shelterSearchQuery.toLowerCase()) ||
+                                                    shelter.district.toLowerCase().includes(shelterSearchQuery.toLowerCase())
+                                                ).length === 0 && (
+                                                        <div style={{ padding: '16px', textAlign: 'center', color: '#868e96' }}>
+                                                            ไม่พบศูนย์พักพิงที่ค้นหา
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -176,21 +257,93 @@ export default function NeedsPage() {
                                 <label className={styles.label}>
                                     สิ่งของ <span className={styles.required}>*</span>
                                 </label>
-                                <select
-                                    name="itemId"
-                                    value={formData.itemId}
-                                    onChange={handleChange}
-                                    className={styles.select}
-                                    required
-                                    disabled={submitting}
-                                >
-                                    <option value="">เลือกสิ่งของ</option>
-                                    {items.map(item => (
-                                        <option key={item._id} value={item._id}>
-                                            {item.name} ({item.unit})
-                                        </option>
-                                    ))}
-                                </select>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type="text"
+                                        name="itemSearch"
+                                        value={itemSearchQuery}
+                                        onChange={(e) => {
+                                            setItemSearchQuery(e.target.value);
+                                            setShowItemDropdown(true);
+                                        }}
+                                        onFocus={() => setShowItemDropdown(true)}
+                                        className={styles.select}
+                                        placeholder="พิมพ์เพื่อค้นหาสิ่งของ..."
+                                        disabled={submitting}
+                                        autoComplete="off"
+                                    />
+                                    {showItemDropdown && (
+                                        <>
+                                            <div
+                                                style={{
+                                                    position: 'fixed',
+                                                    top: 0,
+                                                    left: 0,
+                                                    right: 0,
+                                                    bottom: 0,
+                                                    zIndex: 9
+                                                }}
+                                                onClick={() => setShowItemDropdown(false)}
+                                            />
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    right: 0,
+                                                    backgroundColor: 'white',
+                                                    border: '1px solid #dee2e6',
+                                                    borderRadius: '8px',
+                                                    marginTop: '4px',
+                                                    maxHeight: '300px',
+                                                    overflowY: 'auto',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                    zIndex: 10
+                                                }}
+                                            >
+                                                {items
+                                                    .filter(item =>
+                                                        item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()) ||
+                                                        item.categoryId?.name?.toLowerCase().includes(itemSearchQuery.toLowerCase())
+                                                    )
+                                                    .map(item => (
+                                                        <div
+                                                            key={item._id}
+                                                            onClick={() => {
+                                                                setFormData(prev => ({ ...prev, itemId: item._id }));
+                                                                setItemSearchQuery(`${item.name} (${item.unit})`);
+                                                                setShowItemDropdown(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '12px 16px',
+                                                                cursor: 'pointer',
+                                                                borderBottom: '1px solid #f1f3f5',
+                                                                transition: 'background-color 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                                                        >
+                                                            <div style={{ fontWeight: '600', fontSize: '14px', color: '#212529' }}>
+                                                                {item.name}
+                                                            </div>
+                                                            <div style={{ fontSize: '12px', color: '#868e96', marginTop: '2px' }}>
+                                                                หน่วย: {item.unit} {item.categoryId?.name && `• หมวดหมู่: ${item.categoryId.name}`}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                }
+                                                {items.filter(item =>
+                                                    item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()) ||
+                                                    item.categoryId?.name?.toLowerCase().includes(itemSearchQuery.toLowerCase())
+                                                ).length === 0 && (
+                                                        <div style={{ padding: '16px', textAlign: 'center', color: '#868e96' }}>
+                                                            ไม่พบสิ่งของที่ค้นหา
+                                                        </div>
+                                                    )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
                             <div className={styles.formGroup}>

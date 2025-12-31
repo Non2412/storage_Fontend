@@ -1,10 +1,10 @@
 /* Sidebar */
 .sidebar {
     width: 260px;
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-right: 1px solid var(--glass-border);
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     padding: 24px 16px;
@@ -14,6 +14,7 @@
     top: 0;
     z-index: 50;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .sidebarHeader {
@@ -95,7 +96,7 @@
 }
 
 .navItem:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(99, 102, 241, 0.08);
     color: var(--text-primary);
     transform: translateX(4px);
 }

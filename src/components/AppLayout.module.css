@@ -1,8 +1,8 @@
 .appContainer {
     display: flex;
     min-height: 100vh;
-    background: #0a0e1a;
-    color: #e5e7eb;
+    background: #f8fafc;
+    color: #0f172a;
 }
 
 .mainContent {

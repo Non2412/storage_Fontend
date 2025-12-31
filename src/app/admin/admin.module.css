@@ -4,7 +4,7 @@
   display: flex;
   height: 100vh;
   background-color: #f5f7fa;
-  font-family: var(--font-sarabun), sans-serif;
+  font-family: var(--font-sans, 'Inter', 'Noto Sans Thai', sans-serif);
   color: #333;
 }
 
@@ -32,10 +32,11 @@
 }
 
 .sidebarTitle {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #8c98a5;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
 }
 
 .sidebarMenu {
@@ -72,6 +73,7 @@
   background: none;
   width: 100%;
   text-align: left;
+  font-family: var(--font-sans, 'Inter', 'Noto Sans Thai', sans-serif);
 }
 
 .navItem:hover {
@@ -131,6 +133,8 @@
 .logoText {
   font-size: 20px;
   font-weight: 700;
+  font-family: var(--font-sans, 'Inter', 'Noto Sans Thai', sans-serif);
+  letter-spacing: -0.5px;
 }
 
 .searchBar {
@@ -190,29 +194,29 @@
 
 /* Content Area */
 .content {
-  padding: 24px;
+  padding: 12px;
   overflow-y: auto;
   flex: 1;
 }
 
 .contentWrapper {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
 /* Stats Cards */
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .statCard {
   background-color: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -231,9 +235,10 @@
 }
 
 .statLabel {
-  font-size: 14px;
+  font-size: 13px;
   color: #6c757d;
   margin-top: 4px;
+  font-weight: 500;
 }
 
 .statIconBox {
@@ -249,8 +254,8 @@
 .indicatorsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .indicatorCard {
@@ -277,14 +282,14 @@
 .chartsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 24px;
+  gap: 12px;
 }
 
 .chartCard {
   background-color: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .chartCardBlue {
@@ -296,12 +301,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .chartTitle {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
+  color: #212529;
 }
 
 .trendBadge {
@@ -394,10 +400,10 @@
 /* Table Styles */
 .tableContainer {
   background-color: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e1e4e8;
   overflow: hidden;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .customTable {
@@ -411,14 +417,18 @@
   padding: 12px 16px;
   text-align: left;
   font-weight: 600;
+  font-size: 13px;
   color: #495057;
   border-bottom: 2px solid #edeff2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .customTable td {
-  padding: 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid #edeff2;
   color: #333;
+  font-size: 14px;
 }
 
 .customTable tr:hover {
@@ -432,9 +442,10 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .badgeCritical {
@@ -455,8 +466,8 @@
 /* Filter Bar */
 .filterBar {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
@@ -477,14 +488,14 @@
 /* Inventory Grid */
 .inventoryGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
 
 .inventoryCard {
   background-color: #ffffff;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 16px;
   border: 1px solid #e1e4e8;
 }
 
@@ -709,60 +720,65 @@
 
 /* --- Redesigned Inventory (Dark Theme) --- */
 .inventoryContainer {
-  background-color: #f8fafd;
-  padding: 32px;
-  border-radius: 20px;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
   min-height: 100%;
-  border: 1px solid #eef2f7;
+  border: none;
 }
 
 .inventoryTitle {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: #212529;
   margin-bottom: 4px;
+  letter-spacing: -0.5px;
 }
 
 .inventorySubTitle {
   font-size: 14px;
   color: #868e96;
-  margin-bottom: 32px;
+  margin-bottom: 20px;
+  font-weight: 400;
 }
 
 .inventorySummaryGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .inventorySummaryCard {
   background-color: #ffffff;
-  padding: 20px;
-  border-radius: 16px;
+  padding: 16px;
+  border-radius: 8px;
   border: 1px solid #e1e7f0;
-  box-shadow: 0 4px 15px rgba(67, 97, 238, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
 }
 
 .summaryLabel {
-  font-size: 13px;
+  font-size: 12px;
   color: #64748b;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .summaryValue {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   color: #1e293b;
+  letter-spacing: -0.5px;
 }
 
 .categoryTabsScroll {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 16px;
   overflow-x: auto;
   padding-bottom: 8px;
 }
@@ -787,8 +803,8 @@
 
 .inventoryControls {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .searchWrapper {
@@ -839,17 +855,17 @@
 
 .itemGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
 }
 
 .itemCardDark {
   background-color: #ffffff;
-  border-radius: 20px;
-  padding: 28px;
-  border: 1.5px solid #edf2f7;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e1e4e8;
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -862,7 +878,7 @@
 .itemCardHeader {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .itemIconWrapper {
@@ -959,7 +975,7 @@
 
 .modalContent {
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   width: 100%;
   max-width: 500px;
   padding: 32px;
@@ -1048,31 +1064,32 @@
 /* Dashboard Enhancement Styles */
 .welcomeBanner {
   background: linear-gradient(135deg, #4361ee 0%, #a855f7 100%);
-  border-radius: 16px;
-  padding: 32px;
+  border-radius: 8px;
+  padding: 20px 24px;
   color: #ffffff;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 15px -3px rgba(67, 97, 238, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .welcomeTitle {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
 }
 
 .welcomeSubtitle {
-  font-size: 16px;
+  font-size: 14px;
   opacity: 0.9;
   max-width: 600px;
 }
 
 .bannerStats {
   display: flex;
-  gap: 32px;
-  margin-top: 24px;
+  gap: 24px;
+  margin-top: 16px;
 }
 
 .bannerStatItem {
@@ -1088,7 +1105,7 @@
 }
 
 .bannerStatValue {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
 }
 

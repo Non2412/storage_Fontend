@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sarabun } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "@/contexts/CartContext";
 
 const sarabun = Sarabun({
   weight: ['100', '200', '300', '400', '500', '600', '700', '800'],
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="th" suppressHydrationWarning>
       <body className={`${sarabun.variable}`} style={{ fontFamily: 'var(--font-sarabun), sans-serif' }} suppressHydrationWarning>
-        {children}
+        <CartProvider>
+          {children}
+        </CartProvider>
       </body>
     </html>
   );

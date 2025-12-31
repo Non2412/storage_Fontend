@@ -4,11 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3, Users, Home, Package, AlertCircle,
-  LogOut, Menu, X, Plus, Bell, Settings, Search,
-  TrendingUp, TrendingDown, DollarSign, Calendar,
-  FileText, ThumbsUp, ChevronDown, Grid3x3, Type, FileQuestion,
-  Truck, ClipboardList, ArrowUpRight, ArrowDownLeft, ShieldCheck, Database,
-  UserCheck, Newspaper, Save, LayoutDashboard
+  LogOut, Menu, X, Bell, Search,
+  FileText, ClipboardList, LayoutDashboard
 } from 'lucide-react';
 import {
   LineChart, Line, PieChart, Pie, Cell,
@@ -191,7 +188,7 @@ export default function AdminDashboard() {
       // ดึงข้อมูล request ใหม่จาก API เพื่อให้ได้ข้อมูลครบถ้วน
       const requestRes = await getRequestDetail(id);
       console.log('Request detail from API:', requestRes);
-      
+
       if (!requestRes.success || !requestRes.data) {
         alert('ไม่พบคำร้องขอ');
         return;
@@ -225,10 +222,10 @@ export default function AdminDashboard() {
         } else {
           extractedItemId = item.itemId as string;
         }
-        
+
         console.log('Processing item:', item);
         console.log('Extracted itemId:', extractedItemId);
-        
+
         return {
           itemId: extractedItemId,
           quantityApproved: item.quantityRequested
@@ -242,7 +239,7 @@ export default function AdminDashboard() {
         alert('ข้อมูล items ไม่ถูกต้อง กรุณาลองใหม่');
         return;
       }
-      
+
       console.log('Items to approve:', itemsToApprove);
       console.log('Warehouse ID:', warehouseId);
 
@@ -650,10 +647,7 @@ export default function AdminDashboard() {
             { icon: FileText, label: 'รายการคำร้อง', id: 'requests' },
             { icon: Home, label: 'ศูนย์พักพิง', id: 'shelters' },
             { icon: Package, label: 'คลังสินค้า', id: 'inventory' },
-            { icon: Truck, label: 'การกระจายสิ่งของ', id: 'distribution' },
-            { icon: ShieldCheck, label: 'ผู้ส่งมอบ', id: 'suppliers' },
             { icon: ClipboardList, label: 'ประวัติการอนุมัติ', id: 'logs' },
-            { icon: Settings, label: 'ตั้งค่าระบบ', id: 'settings' },
           ].map((item) => (
             <button
               key={item.id}
@@ -702,9 +696,6 @@ export default function AdminDashboard() {
           <div className={styles.headerRight}>
             <div className={styles.headerBtn}>
               <Bell size={20} />
-            </div>
-            <div className={styles.headerBtn} onClick={() => setActiveTab('settings')}>
-              <Settings size={20} />
             </div>
           </div>
         </header>
@@ -799,7 +790,7 @@ export default function AdminDashboard() {
                             onClick={() => handleApprove(req._id)}
                             className={styles.approveBtn}
                           >
-                            <Truck size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
+                            <Package size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
                           </button>
                         </div>
                       ))}
@@ -1590,11 +1581,11 @@ export default function AdminDashboard() {
                             </td>
                             <td>{req.requestedBy?.name}</td>
                             <td>
-                              <span className={`${styles.statusBadge} ${styles.badgeNormal}`} style={{ 
-                                backgroundColor: '#d3f9d8', 
-                                color: '#2b8a3e' 
+                              <span className={`${styles.statusBadge} ${styles.badgeNormal}`} style={{
+                                backgroundColor: '#d3f9d8',
+                                color: '#2b8a3e'
                               }}>
-                                <ThumbsUp size={12} style={{ marginRight: '4px' }} /> 
+                                <Package size={12} style={{ marginRight: '4px' }} />
                                 อนุมัติแล้ว
                               </span>
                             </td>
@@ -1665,7 +1656,7 @@ export default function AdminDashboard() {
                                 className={styles.approveBtn}
                                 style={{ padding: '6px 12px', fontSize: '13px' }}
                               >
-                                <Truck size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
+                                <Package size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
                               </button>
                             </td>
                           </tr>
@@ -1683,94 +1674,9 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {activeTab === 'settings' && (
-              <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '24px', color: '#343a40' }}>ตั้งค่าระบบ (Settings)</h2>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                  {/* Profile Settings */}
-                  <div className={styles.chartCard}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e7f5ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <UserCheck size={32} color="#339af0" />
-                      </div>
-                      <div>
-                        <h3 className={styles.chartTitle} style={{ marginBottom: '4px' }}>ข้อมูลส่วนตัว</h3>
-                        <p style={{ fontSize: '14px', color: '#868e96' }}>จัดการข้อมูลบัญชีของคุณ</p>
-                      </div>
-                    </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#495057', marginBottom: '6px' }}>ชื่อ-นามสกุล</label>
-                        <input type="text" defaultValue="Admin User" className={styles.filterInput} style={{ width: '100%' }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#495057', marginBottom: '6px' }}>อีเมล</label>
-                        <input type="email" defaultValue="admin@materially.com" className={styles.filterInput} style={{ width: '100%' }} disabled />
-                      </div>
-                      <button className={styles.approveBtn} style={{ marginTop: '8px', backgroundColor: '#339af0' }}>บันทึกข้อมูล</button>
-                    </div>
-                  </div>
 
-                  {/* System Preferences */}
-                  <div className={styles.chartCard}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#fff4e6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Settings size={32} color="#fd7e14" />
-                      </div>
-                      <div>
-                        <h3 className={styles.chartTitle} style={{ marginBottom: '4px' }}>การตั้งค่าระบบ</h3>
-                        <p style={{ fontSize: '14px', color: '#868e96' }}>ปรับแต่งการทำงานของระบบ</p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f3f5' }}>
-                        <div>
-                          <div style={{ fontWeight: '500', fontSize: '14px' }}>โหมดมืด (Dark Mode)</div>
-                          <div style={{ fontSize: '12px', color: '#adb5bd' }}>ใช้งานธีมสีเข้ม</div>
-                        </div>
-                        <div style={{ width: '40px', height: '20px', backgroundColor: '#e9ecef', borderRadius: '10px', position: 'relative' }}>
-                          <div style={{ width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: '2px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}></div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f3f5' }}>
-                        <div>
-                          <div style={{ fontWeight: '500', fontSize: '14px' }}>การแจ้งเตือนเสียง</div>
-                          <div style={{ fontSize: '12px', color: '#adb5bd' }}>เล่นเสียงเมื่อมีคำขอใหม่</div>
-                        </div>
-                        <div style={{ width: '40px', height: '20px', backgroundColor: '#40c057', borderRadius: '10px', position: 'relative' }}>
-                          <div style={{ width: '16px', height: '16px', backgroundColor: 'white', borderRadius: '50%', position: 'absolute', top: '2px', right: '2px', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Security & Backup */}
-                  <div className={styles.chartCard} style={{ gridColumn: '1 / -1' }}>
-                    <h3 className={styles.chartTitle} style={{ marginBottom: '20px' }}>ความปลอดภัยและการสำรองข้อมูล</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-                      <div style={{ padding: '24px', border: '1px solid #dee2e6', borderRadius: '8px', textAlign: 'center' }}>
-                        <ShieldCheck size={32} color="#40c057" style={{ marginBottom: '12px' }} />
-                        <div style={{ fontWeight: '600', marginBottom: '8px' }}>เปลี่ยนรหัสผ่าน</div>
-                        <button className={styles.navItem} style={{ width: '100%', justifyContent: 'center', border: '1px solid #dee2e6' }}>แก้ไข</button>
-                      </div>
-                      <div style={{ padding: '24px', border: '1px solid #dee2e6', borderRadius: '8px', textAlign: 'center' }}>
-                        <Database size={32} color="#339af0" style={{ marginBottom: '12px' }} />
-                        <div style={{ fontWeight: '600', marginBottom: '8px' }}>สำรองฐานข้อมูล</div>
-                        <button className={styles.navItem} style={{ width: '100%', justifyContent: 'center', border: '1px solid #dee2e6' }}>Backup Now</button>
-                      </div>
-                      <div style={{ padding: '24px', border: '1px solid #dee2e6', borderRadius: '8px', textAlign: 'center' }}>
-                        <FileText size={32} color="#fab005" style={{ marginBottom: '12px' }} />
-                        <div style={{ fontWeight: '600', marginBottom: '8px' }}>Activity Logs</div>
-                        <button className={styles.navItem} style={{ width: '100%', justifyContent: 'center', border: '1px solid #dee2e6' }}>ดูประวัติ</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             {/* Modal รายละเอียดการแจ้งเตือน */}
             {isAlertModalOpen && selectedAlertId && (
               <div className={styles.modalOverlay}>

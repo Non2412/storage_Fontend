@@ -26,9 +26,10 @@
     margin: 0;
     font-size: 32px;
     font-weight: 800;
-    background: linear-gradient(to right, #f8fafc, #94a3b8);
+    background: var(--primary-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
     letter-spacing: -0.5px;
 }
 
@@ -329,9 +330,19 @@
 }
 
 .percentageText {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.itemCard:hover .percentageText {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .progressBar {

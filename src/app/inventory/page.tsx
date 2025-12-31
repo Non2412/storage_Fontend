@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
+import CartDrawer from '@/components/CartDrawer';
+import { useCart } from '@/contexts/CartContext';
 import styles from './inventory.module.css';
-import { getItems, submitRequest, getCurrentUser, getShelters, getWarehouses, getStockStatus, type Item, type Shelter, type StockItem } from '@/lib/api';
+import { getItems, getCurrentUser, getShelters, getWarehouses, getStockStatus, type Item, type Shelter, type StockItem } from '@/lib/api';
 import { ItemCategory, CATEGORY_LABELS, getItemStatus, STATUS_LABELS, type InventoryItem } from '@/types/inventory';
-import { MOCK_INVENTORY } from '@/data/mockInventory';
 
 // Map backend category to frontend category
 function mapCategory(categoryName: string): ItemCategory {
@@ -25,33 +26,6 @@ function mapCategory(categoryName: string): ItemCategory {
   return categoryMap[categoryName] || 'general';
 }
 
-// Map backend Item to frontend InventoryItem
-function mapItemToInventory(item: Item, stockQuantity: number = 0): InventoryItem {
-  const categoryName = typeof item.categoryId === 'object' ? item.categoryId.name : '';
-  const categoryMap: Record<string, ItemCategory> = {
-    'อาหาร': 'food',
-    'อาหารและเครื่องดื่ม': 'food',
-    'เสื้อผ้า': 'clothing',
-    'เสื้อผ้าและผ้าห่ม': 'clothing',
-    'ยา': 'medical',
-    'ยาและเวชภัณฑ์': 'medical',
-    'สุขอนามัย': 'hygiene',
-    'อุปกรณ์สุขอนามัย': 'hygiene',
-    'ทั่วไป': 'general',
-    'อุปกรณ์ทั่วไป': 'general',
-  };
-
-  return {
-    id: item._id,
-    name: item.name,
-    category: categoryMap[categoryName] || 'general',
-    quantity: stockQuantity,
-    maxQuantity: stockQuantity * 2 || 100, // Estimate max as double current, or default 100
-    unit: item.unit,
-    description: item.description
-  };
-}
-
 export default function InventoryPage() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
@@ -61,13 +35,11 @@ export default function InventoryPage() {
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'low' | 'out'>('all');
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [requestQuantity, setRequestQuantity] = useState(1);
-  const [requestReason, setRequestReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [shelters, setShelters] = useState<Shelter[]>([]);
   const [selectedShelterId, setSelectedShelterId] = useState<string>('');
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const { addToCart } = useCart();
 
   useEffect(() => {
     setIsMounted(true);
@@ -92,6 +64,16 @@ export default function InventoryPage() {
     loadInventoryData();
     loadShelters();
   }, [router, isMounted]);
+
+  // Listen for cart open event from sidebar
+  useEffect(() => {
+    const handleOpenCart = () => {
+      setIsCartOpen(true);
+    };
+
+    window.addEventListener('openCart', handleOpenCart);
+    return () => window.removeEventListener('openCart', handleOpenCart);
+  }, []);
 
   const loadShelters = async () => {
     try {
@@ -132,7 +114,7 @@ export default function InventoryPage() {
             const existing = allStockItems.get(stockItem.itemId);
             if (existing) {
               existing.totalQuantity += stockItem.quantity;
-              existing.maxQuantity += stockItem.minAlert * 3; // Estimate max as 3x minAlert
+              existing.maxQuantity += stockItem.minAlert * 3;
             } else {
               allStockItems.set(stockItem.itemId, {
                 item: stockItem,
@@ -146,7 +128,6 @@ export default function InventoryPage() {
 
       // Convert to InventoryItem format
       const inventoryItems: InventoryItem[] = Array.from(allStockItems.values()).map(({ item, totalQuantity, maxQuantity }) => {
-        // Determine category from item name (simple mapping)
         let category: ItemCategory = 'general';
         const name = item.itemName.toLowerCase();
         if (name.includes('ข้าว') || name.includes('น้ำ') || name.includes('นม') || name.includes('อาหาร') || name.includes('rice') || name.includes('water') || name.includes('food') || name.includes('milk') || name.includes('bread') || name.includes('egg')) {
@@ -171,16 +152,7 @@ export default function InventoryPage() {
       });
 
       if (inventoryItems.length === 0) {
-        // Fallback to items API if no stock data
-        const itemsResult = await getItems();
-        if (itemsResult.success && itemsResult.data) {
-          const fallbackItems = itemsResult.data.map(item =>
-            mapItemToInventory(item, 0)
-          );
-          setItems(fallbackItems);
-        } else {
-          setError('ไม่พบข้อมูลสินค้า');
-        }
+        setError('ไม่พบข้อมูลสินค้า');
       } else {
         setItems(inventoryItems);
       }
@@ -192,61 +164,28 @@ export default function InventoryPage() {
     }
   };
 
-  const handleRequestItem = (item: InventoryItem) => {
-    setSelectedItem(item);
-    setRequestQuantity(1);
-    setRequestReason('');
-    setShowRequestModal(true);
-  };
-
-  const handleSubmitRequest = async () => {
-    if (!selectedItem) return;
-
-    setSubmitting(true);
-    try {
-      const user = getCurrentUser();
-      if (!user) {
-        alert('กรุณาเข้าสู่ระบบ');
-        return;
-      }
-
-      // Validate shelter selection
-      if (!selectedShelterId) {
-        alert('กรุณาเลือกศูนย์พักพิง');
-        return;
-      }
-
-      // Submit request via API
-      const result = await submitRequest(
-        selectedShelterId,
-        [{
-          itemId: selectedItem.id,
-          quantityRequested: requestQuantity
-        }],
-        requestReason
-      );
-
-      if (result.success) {
-        alert(`ส่งคำขอ ${selectedItem.name} จำนวน ${requestQuantity} ${selectedItem.unit} เรียบร้อย`);
-        setShowRequestModal(false);
-        setSelectedItem(null);
-        setRequestReason('');
-      } else {
-        alert(result.message || 'ไม่สามารถส่งคำขอได้: เซิร์ฟเวอร์ปฏิเสธการดำเนินการ');
-      }
-    } catch (err) {
-      console.error('Error submitting request:', err);
-      alert('เกิดข้อผิดพลาดในการส่งคำขอ');
-    } finally {
-      setSubmitting(false);
+  const handleAddToCart = (item: InventoryItem) => {
+    if (item.quantity <= 0) {
+      alert('สินค้าหมดแล้ว');
+      return;
     }
+
+    addToCart({
+      itemId: item.id,
+      itemName: item.name,
+      quantity: 1,
+      unit: item.unit,
+      maxAvailable: item.quantity
+    });
+
+    // Show feedback
+    alert(`✅ เพิ่ม "${item.name}" ลงตะกร้าแล้ว!\n\nคลิกที่ปุ่ม "ตะกร้าสินค้า" เพื่อดูรายการและส่งคำขอ`);
   };
 
   if (!isMounted) {
     return null;
   }
 
-  // Show loading state
   if (loading) {
     return (
       <AppLayout>
@@ -266,7 +205,6 @@ export default function InventoryPage() {
     );
   }
 
-  // Show error state
   if (error) {
     return (
       <AppLayout>
@@ -322,7 +260,7 @@ export default function InventoryPage() {
         <div className={styles.header}>
           <div>
             <h1 className={styles.pageTitle}>คลังสิ่งของ</h1>
-            <p className={styles.pageSubtitle}>จัดการและติดตามสิ่งของในคลัง</p>
+            <p className={styles.pageSubtitle}>เลือกสินค้าที่ต้องการและเพิ่มลงตะกร้า</p>
           </div>
         </div>
 
@@ -428,10 +366,17 @@ export default function InventoryPage() {
                 <div className={styles.quantityInfo}>
                   <div className={styles.quantityText}>
                     <span className={styles.currentQty}>{item.quantity}</span>
-                    <span className={styles.maxQty}>/ {item.maxQuantity}</span>
                     <span className={styles.unit}>{item.unit}</span>
                   </div>
-                  <div className={styles.percentageText}>{Math.round(percentage)}%</div>
+                  <div
+                    className={styles.percentageText}
+                    style={{
+                      color: status === 'available' ? '#22c55e' : status === 'low' ? '#f59e0b' : '#ef4444',
+                      fontWeight: '700'
+                    }}
+                  >
+                    {Math.round(percentage)}%
+                  </div>
                 </div>
 
                 <div className={styles.progressBar}>
@@ -450,10 +395,10 @@ export default function InventoryPage() {
 
                 <button
                   className={styles.requestButton}
-                  onClick={() => handleRequestItem(item)}
+                  onClick={() => handleAddToCart(item)}
                   disabled={status === 'out'}
                 >
-                  {status === 'out' ? 'หมดแล้ว' : 'ขอสิ่งของ'}
+                  {status === 'out' ? 'หมดแล้ว' : '🛒 เพิ่มลงตะกร้า'}
                 </button>
               </div>
             );
@@ -466,90 +411,12 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* Request Modal */}
-        {showRequestModal && selectedItem && (
-          <div className={styles.modalOverlay} onClick={() => !submitting && setShowRequestModal(false)}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.modalHeader}>
-                <h2>ขอสิ่งของ</h2>
-                <button
-                  className={styles.closeButton}
-                  onClick={() => setShowRequestModal(false)}
-                  disabled={submitting}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <div className={styles.formGroup}>
-                  <label>ศูนย์พักพิง</label>
-                  <select
-                    value={selectedShelterId}
-                    onChange={(e) => setSelectedShelterId(e.target.value)}
-                    className={styles.input}
-                    disabled={submitting}
-                  >
-                    <option value="">-- เลือกศูนย์พักพิง --</option>
-                    {shelters.map((shelter) => (
-                      <option key={shelter._id} value={shelter._id}>
-                        {shelter.name || 'ไม่ระบุชื่อ'} {shelter.province ? `(${shelter.province})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>สิ่งของ</label>
-                  <input type="text" value={selectedItem.name} disabled className={styles.input} />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>จำนวน ({selectedItem.unit})</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={selectedItem.quantity}
-                    value={requestQuantity}
-                    onChange={(e) => setRequestQuantity(parseInt(e.target.value) || 1)}
-                    className={styles.input}
-                    disabled={submitting}
-                  />
-                  <small>มีในคลัง: {selectedItem.quantity} {selectedItem.unit}</small>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>เหตุผล/หมายเหตุ</label>
-                  <textarea
-                    value={requestReason}
-                    onChange={(e) => setRequestReason(e.target.value)}
-                    className={styles.textarea}
-                    rows={3}
-                    placeholder="ระบุเหตุผลในการขอสิ่งของ..."
-                    disabled={submitting}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.modalFooter}>
-                <button
-                  className={styles.cancelButton}
-                  onClick={() => setShowRequestModal(false)}
-                  disabled={submitting}
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  className={styles.submitButton}
-                  onClick={handleSubmitRequest}
-                  disabled={submitting}
-                >
-                  {submitting ? 'กำลังส่ง...' : 'ส่งคำขอ'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Cart Drawer */}
+        <CartDrawer
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          shelterId={selectedShelterId}
+        />
       </div>
     </AppLayout>
   );

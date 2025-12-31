@@ -101,6 +101,31 @@ export default function NeedsPage() {
             );
 
             if (result.success) {
+                // Save to localStorage for requests page
+                try {
+                    const selectedShelter = shelters.find(s => s._id === formData.shelterId);
+                    const selectedItem = items.find(i => i._id === formData.itemId);
+
+                    if (selectedShelter && selectedItem) {
+                        const existingRequests = JSON.parse(localStorage.getItem('user_requests') || '[]');
+                        const newRequest = {
+                            id: `REQ-${String(existingRequests.length + 1).padStart(3, '0')}`,
+                            itemName: selectedItem.name,
+                            quantity: formData.quantity,
+                            unit: selectedItem.unit,
+                            urgency: formData.urgency === 'urgent' ? 'ด่วน' : formData.urgency === 'normal' ? 'ปกติ' : 'ทั่วไป',
+                            status: 'pending',
+                            shelterName: selectedShelter.name,
+                            requestDate: new Date().toISOString(),
+                            note: formData.description || undefined
+                        };
+                        existingRequests.unshift(newRequest); // Add to beginning
+                        localStorage.setItem('user_requests', JSON.stringify(existingRequests));
+                    }
+                } catch (err) {
+                    console.error('Error saving to localStorage:', err);
+                }
+
                 alert('บันทึกความต้องการเรียบร้อยแล้ว');
 
                 // Reset form

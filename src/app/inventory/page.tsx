@@ -366,10 +366,17 @@ export default function InventoryPage() {
                 <div className={styles.quantityInfo}>
                   <div className={styles.quantityText}>
                     <span className={styles.currentQty}>{item.quantity}</span>
-                    <span className={styles.maxQty}>/ {item.maxQuantity}</span>
                     <span className={styles.unit}>{item.unit}</span>
                   </div>
-                  <div className={styles.percentageText}>{Math.round(percentage)}%</div>
+                  <div
+                    className={styles.percentageText}
+                    style={{
+                      color: status === 'available' ? '#22c55e' : status === 'low' ? '#f59e0b' : '#ef4444',
+                      fontWeight: '700'
+                    }}
+                  >
+                    {Math.round(percentage)}%
+                  </div>
                 </div>
 
                 <div className={styles.progressBar}>

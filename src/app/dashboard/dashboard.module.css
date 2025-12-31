@@ -72,12 +72,12 @@
 
 /* Content */
 .content {
-  padding: 40px;
+  padding: 32px 48px;
   display: flex;
   flex-direction: column;
-  gap: 40px;
-  max-width: 1400px;
-  margin: 0 auto;
+  gap: 32px;
+  max-width: 100%;
+  margin: 0;
 }
 
 /* Top Stats Row */

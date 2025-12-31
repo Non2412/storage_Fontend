@@ -58,6 +58,11 @@ export default function HistoryPage() {
     const [typeFilter, setTypeFilter] = useState<'all' | 'request' | 'distribution' | 'receipt'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [historyItems, setHistoryItems] = useState<ActivityLog[]>([]);
+    const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState<ActivityLog | null>(null);
+    const [deliveryImage, setDeliveryImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -118,6 +123,55 @@ export default function HistoryPage() {
             setError('เกิดข้อผิดพลาดในการเชื่อมต่อ');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeliveryClick = (activity: ActivityLog) => {
+        setSelectedActivity(activity);
+        setShowDeliveryModal(true);
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setDeliveryImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleDeliverySubmit = async () => {
+        if (!deliveryImage || !selectedActivity) {
+            alert('กรุณาอัปโหลดรูปภาพหลักฐานการส่งมอบ');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            // TODO: Upload image to server and update status
+            // For now, we'll simulate the process
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Update activity status to delivered
+            setHistoryItems(prev => prev.map(item =>
+                item.id === selectedActivity.id
+                    ? { ...item, status: 'ส่งมอบแล้ว' }
+                    : item
+            ));
+
+            alert('บันทึกการส่งมอบเรียบร้อยแล้ว');
+            setShowDeliveryModal(false);
+            setDeliveryImage(null);
+            setImagePreview(null);
+            setSelectedActivity(null);
+        } catch (err) {
+            console.error('Error submitting delivery:', err);
+            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -269,10 +323,24 @@ export default function HistoryPage() {
                                         )}
                                         {log.status && (
                                             <div className={styles.activityStatus}>
-                                                สถานะ: <span className={log.status.includes('อนุมัติ') ? styles.statusApproved : styles.statusPending}>
+                                                สถานะ: <span className={
+                                                    log.status === 'ส่งมอบแล้ว' ? styles.statusDelivered :
+                                                        log.status.includes('อนุมัติ') ? styles.statusApproved :
+                                                            styles.statusPending
+                                                }>
                                                     {log.status}
                                                 </span>
                                             </div>
+                                        )}
+
+                                        {/* Delivery Button - Only show for approved items */}
+                                        {log.status === 'อนุมัติแล้ว' && (
+                                            <button
+                                                className={styles.deliveryButton}
+                                                onClick={() => handleDeliveryClick(log)}
+                                            >
+                                                📦 ส่งมอบ
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -283,6 +351,63 @@ export default function HistoryPage() {
                     <div className={styles.emptyState}>
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
                         <p>ไม่พบประวัติการทำรายการ</p>
+                    </div>
+                )}
+
+                {/* Delivery Modal */}
+                {showDeliveryModal && selectedActivity && (
+                    <div className={styles.modalOverlay} onClick={() => setShowDeliveryModal(false)}>
+                        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+                            <div className={styles.modalHeader}>
+                                <h2>ยืนยันการส่งมอบ</h2>
+                                <button
+                                    className={styles.closeButton}
+                                    onClick={() => setShowDeliveryModal(false)}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div className={styles.modalBody}>
+                                <div className={styles.deliveryInfo}>
+                                    <h3>{selectedActivity.itemName}</h3>
+                                    <p>จำนวน: {selectedActivity.quantity} {selectedActivity.unit}</p>
+                                    <p>{selectedActivity.details}</p>
+                                </div>
+
+                                <div className={styles.formGroup}>
+                                    <label>อัปโหลดรูปภาพหลักฐานการส่งมอบ *</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className={styles.fileInput}
+                                    />
+                                    {imagePreview && (
+                                        <div className={styles.imagePreview}>
+                                            <img src={imagePreview} alt="Preview" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className={styles.modalFooter}>
+                                <button
+                                    className={styles.cancelButton}
+                                    onClick={() => setShowDeliveryModal(false)}
+                                    disabled={submitting}
+                                >
+                                    ยกเลิก
+                                </button>
+                                <button
+                                    className={styles.submitButton}
+                                    onClick={handleDeliverySubmit}
+                                    disabled={submitting || !deliveryImage}
+                                >
+                                    {submitting ? 'กำลังบันทึก...' : 'ยืนยันการส่งมอบ'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

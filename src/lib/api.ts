@@ -93,15 +93,6 @@ async function apiCall<T = unknown>(
       return { success: false, message: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ในขณะนี้ (HTML Response)' };
     }
 
-    if (response.status === 401) {
-      // Token expired or invalid
-      removeToken();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
-      return { success: false, message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' };
-    }
-
     if (!response.ok) {
       const errorMessage = data?.error || data?.message || `เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (Status: ${response.status})`;
       console.error(`API Error [${endpoint}]: Status ${response.status}`, {

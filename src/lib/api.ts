@@ -406,11 +406,41 @@ export async function getRequestDetail(requestId: string): Promise<ApiResponse<R
   return apiCall<Request>(`/api/requests/${requestId}`);
 }
 
+// Demo Request Types
+interface EnrichedItem {
+  itemId: {
+    _id: string;
+    name: string;
+    unit: string;
+  };
+  quantityRequested: number;
+}
+
+interface DemoRequest {
+  _id: string;
+  shelterId: {
+    _id: string;
+    name: string;
+    location: string;
+  };
+  items: EnrichedItem[];
+  requestedBy: {
+    id?: string;
+    name: string;
+    email?: string;
+    role?: string;
+  };
+  status: string;
+  reason: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export async function submitRequest(
   shelterId: string,
   items: { itemId: string; quantityRequested: number }[],
   reason?: string
-): Promise<ApiResponse<Request>> {
+): Promise<ApiResponse<Request | DemoRequest>> {
   // Demo Mode: Try API first, fallback to local storage if 403/500
   const response = await apiCall<Request>('/api/requests', {
     method: 'POST',
@@ -436,7 +466,7 @@ export async function submitRequest(
     } catch (e) { console.error('Demo fallback: failed to get shelter name'); }
 
     // Fetch real item info for better demo data
-    let enrichedItems: any[] = [];
+    let enrichedItems: EnrichedItem[] = [];
     try {
       const itemsRes = await getItems();
       if (itemsRes.success && itemsRes.data) {
@@ -463,7 +493,7 @@ export async function submitRequest(
       }));
     }
 
-    const newRequest: any = {
+    const newRequest: DemoRequest = {
       _id: 'local_' + Date.now(),
       shelterId: { _id: shelterId, name: shelterName, location: 'Bangkok' },
       items: enrichedItems,
@@ -492,12 +522,12 @@ export async function approveRequest(
   requestId: string,
   items: { itemId: string; quantityApproved: number }[],
   warehouseId: string
-): Promise<ApiResponse<Request>> {
+): Promise<ApiResponse<Request | DemoRequest>> {
   // Demo Mode: Check if it's a local request first
   if (requestId.startsWith('local_') && typeof window !== 'undefined') {
     const existingRaw = localStorage.getItem('demo_requests');
     if (existingRaw) {
-      const requests: any[] = JSON.parse(existingRaw);
+      const requests: DemoRequest[] = JSON.parse(existingRaw);
       const targetIndex = requests.findIndex(r => r._id === requestId);
       if (targetIndex !== -1) {
         requests[targetIndex].status = 'approved';
@@ -649,7 +679,15 @@ export const getDistributionTasks = async () => {
 };
 
 // ==================== Stock API (Demo Support) ====================
-export async function getStock(): Promise<ApiResponse<any[]>> {
+interface DemoStock {
+  category: string;
+  quantity: string;
+  unit: string;
+  status: string;
+  color: string;
+}
+
+export async function getStock(): Promise<ApiResponse<DemoStock[]>> {
   // In real app, this fetches from /api/stock
   // For demo, we check localStorage
   if (typeof window !== 'undefined') {
@@ -658,7 +696,7 @@ export async function getStock(): Promise<ApiResponse<any[]>> {
       return { success: true, data: JSON.parse(stockRaw) };
     }
     // Initial Mock Data if empty
-    const initialStock = [
+    const initialStock: DemoStock[] = [
       { category: 'อาหาร', quantity: '12,500', unit: 'ชุด', status: 'เพียงพอ', color: '#40c057' },
       { category: 'น้ำดื่ม', quantity: '8,400', unit: 'แพ็ค', status: 'ต้องเติม', color: '#fab005' },
       { category: 'เวชภัณฑ์', quantity: '3,200', unit: 'ชุด', status: 'เพียงพอ', color: '#339af0' },

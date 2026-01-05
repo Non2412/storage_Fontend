@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   BarChart3, Users, Home, Package, AlertCircle,
   LogOut, Menu, X, Bell, Search,
-  FileText, ClipboardList, LayoutDashboard
+  FileText, ClipboardList, LayoutDashboard, Edit3, Check, XCircle
 } from 'lucide-react';
 import {
   LineChart, Line, PieChart, Pie, Cell,
@@ -38,6 +38,11 @@ export default function AdminDashboard() {
   const [lowStockItems, setLowStockItems] = useState<any[]>([]);
   const [totalPeopleCount, setTotalPeopleCount] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Edit Request Modal State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<Request | null>(null);
+  const [editedQuantities, setEditedQuantities] = useState<{[itemId: string]: number}>({});
 
   useEffect(() => {
     setIsMounted(true);
@@ -180,6 +185,84 @@ export default function AdminDashboard() {
 
   // Replace hardcoded stockData with state
   const [stockData, setStockData] = useState<any[]>([]);
+
+  // เปิด Modal แก้ไขจำนวน
+  const handleOpenEditModal = async (request: Request) => {
+    // ตั้งค่า quantities เริ่มต้นจากที่ขอมา
+    const initialQuantities: {[itemId: string]: number} = {};
+    request.items.forEach(item => {
+      const itemId = typeof item.itemId === 'object' ? item.itemId._id : item.itemId;
+      initialQuantities[itemId] = item.quantityRequested;
+    });
+    setEditedQuantities(initialQuantities);
+    setEditingRequest(request);
+    setEditModalOpen(true);
+  };
+
+  // อัพเดทจำนวนใน Modal
+  const handleQuantityChange = (itemId: string, quantity: number) => {
+    setEditedQuantities(prev => ({
+      ...prev,
+      [itemId]: Math.max(1, quantity) // ต้องมีอย่างน้อย 1
+    }));
+  };
+
+  // อนุมัติด้วยจำนวนที่แก้ไข
+  const handleApproveWithEditedQuantity = async () => {
+    if (!editingRequest) return;
+    if (!confirm('ยืนยันการอนุมัติและโอนของ? (Stock จะถูกตัดออกจากคลังทันที)')) return;
+
+    try {
+      const warehousesRes = await getWarehouses();
+      if (!warehousesRes.success || !warehousesRes.data || warehousesRes.data.length === 0) {
+        alert('ไม่พบข้อมูลคลังสินค้า');
+        return;
+      }
+
+      const mainWarehouse = warehousesRes.data.find(w => w._id === '69480e65cfe460b6bd8ecc2b');
+      const warehouseId = mainWarehouse?._id || warehousesRes.data[warehousesRes.data.length - 1]._id;
+
+      // สร้าง items array ด้วยจำนวนที่แก้ไข
+      const itemsToApprove = editingRequest.items.map(item => {
+        const itemId = typeof item.itemId === 'object' ? item.itemId._id : item.itemId;
+        return {
+          itemId: itemId,
+          quantityApproved: editedQuantities[itemId] || item.quantityRequested
+        };
+      });
+
+      // ขั้นตอนที่ 1: อนุมัติ
+      const approveResult = await approveRequest(editingRequest._id, itemsToApprove, warehouseId);
+      if (!approveResult.success) {
+        alert(approveResult.message || 'เกิดข้อผิดพลาดในการอนุมัติ');
+        return;
+      }
+
+      // ขั้นตอนที่ 2: โอนของทันที
+      const itemsToTransfer = editingRequest.items.map(item => {
+        const itemId = typeof item.itemId === 'object' ? item.itemId._id : item.itemId;
+        return {
+          itemId: itemId,
+          quantityTransferred: editedQuantities[itemId] || item.quantityRequested
+        };
+      });
+
+      const transferResult = await transferRequest(editingRequest._id, itemsToTransfer, warehouseId);
+      if (transferResult.success) {
+        alert('✅ อนุมัติและโอนของเรียบร้อยแล้ว! Stock ถูกตัดออกจากคลัง');
+        setEditModalOpen(false);
+        setEditingRequest(null);
+        fetchInitialData();
+      } else {
+        alert('อนุมัติสำเร็จ แต่โอนของไม่สำเร็จ: ' + (transferResult.message || 'เกิดข้อผิดพลาด'));
+        setEditModalOpen(false);
+        fetchInitialData();
+      }
+    } catch (error) {
+      console.error('Approve error:', error);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
 
   const handleApprove = async (id: string) => {
     if (!confirm('ยืนยันการอนุมัติและโอนของ? (Stock จะถูกตัดออกจากคลังทันที)')) return;
@@ -786,12 +869,32 @@ export default function AdminDashboard() {
                               {req.items.map(i => i.itemId?.name).join(', ')}
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleApprove(req._id)}
-                            className={styles.approveBtn}
-                          >
-                            <Package size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
-                          </button>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => handleOpenEditModal(req)}
+                              style={{ 
+                                padding: '4px 8px', 
+                                fontSize: '12px',
+                                backgroundColor: '#fff3bf',
+                                color: '#e67700',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="แก้ไขจำนวน"
+                            >
+                              <Edit3 size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleApprove(req._id)}
+                              className={styles.approveBtn}
+                            >
+                              <Package size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1651,13 +1754,33 @@ export default function AdminDashboard() {
                               {req.reason || '-'}
                             </td>
                             <td>
-                              <button
-                                onClick={() => handleApprove(req._id)}
-                                className={styles.approveBtn}
-                                style={{ padding: '6px 12px', fontSize: '13px' }}
-                              >
-                                <Package size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
-                              </button>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => handleOpenEditModal(req)}
+                                  style={{ 
+                                    padding: '6px 10px', 
+                                    fontSize: '13px',
+                                    backgroundColor: '#fff3bf',
+                                    color: '#e67700',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="แก้ไขจำนวน"
+                                >
+                                  <Edit3 size={14} /> แก้ไข
+                                </button>
+                                <button
+                                  onClick={() => handleApprove(req._id)}
+                                  className={styles.approveBtn}
+                                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                                >
+                                  <Package size={14} style={{ marginRight: '4px' }} /> อนุมัติ & โอนของ
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1762,6 +1885,102 @@ export default function AdminDashboard() {
                     </div>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* Modal แก้ไขจำนวนก่อนอนุมัติ */}
+            {editModalOpen && editingRequest && (
+              <div className={styles.modalOverlay}>
+                <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
+                  <div className={styles.modalHeader}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '18px' }}>แก้ไขจำนวนก่อนอนุมัติ</h3>
+                      <p style={{ color: '#868e96', fontSize: '14px', margin: '4px 0 0' }}>
+                        ศูนย์พักพิง: {typeof editingRequest.shelterId === 'object' ? editingRequest.shelterId?.name : editingRequest.shelterId}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setEditModalOpen(false); setEditingRequest(null); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                    >
+                      <X size={20} color="#868e96" />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '20px', maxHeight: '400px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e9ecef' }}>
+                          <th style={{ textAlign: 'left', padding: '12px 8px', color: '#495057' }}>รายการ</th>
+                          <th style={{ textAlign: 'center', padding: '12px 8px', color: '#495057', width: '120px' }}>ขอมา</th>
+                          <th style={{ textAlign: 'center', padding: '12px 8px', color: '#495057', width: '150px' }}>อนุมัติ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editingRequest.items.map((item, idx) => {
+                          const itemId = typeof item.itemId === 'object' ? item.itemId._id : item.itemId;
+                          const itemName = typeof item.itemId === 'object' ? item.itemId.name : 'Unknown';
+                          const itemUnit = typeof item.itemId === 'object' ? item.itemId.unit : '';
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid #f1f3f5' }}>
+                              <td style={{ padding: '12px 8px' }}>
+                                <span style={{ fontWeight: '500' }}>{itemName}</span>
+                                <span style={{ color: '#868e96', marginLeft: '8px' }}>({itemUnit})</span>
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '12px 8px', color: '#868e96' }}>
+                                {item.quantityRequested}
+                              </td>
+                              <td style={{ textAlign: 'center', padding: '12px 8px' }}>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={item.quantityRequested * 2}
+                                  value={editedQuantities[itemId] || item.quantityRequested}
+                                  onChange={(e) => handleQuantityChange(itemId, parseInt(e.target.value) || 1)}
+                                  style={{
+                                    width: '80px',
+                                    padding: '8px 12px',
+                                    border: '2px solid #228be6',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    textAlign: 'center',
+                                    fontWeight: '600'
+                                  }}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid #e9ecef', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setEditModalOpen(false); setEditingRequest(null); }}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f8f9fa',
+                        color: '#495057',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <XCircle size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleApproveWithEditedQuantity}
+                      className={styles.approveBtn}
+                      style={{ padding: '10px 20px', fontSize: '14px' }}
+                    >
+                      <Check size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                      อนุมัติ & โอนของ
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

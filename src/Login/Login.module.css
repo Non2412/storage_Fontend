@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  color: #e6eef8;
+  color: #1a202c;
   text-align: center;
   animation: fadeInUp 0.6s ease-out;
 }
@@ -41,13 +41,13 @@
   color: #fff;
   font-size: 32px;
   font-weight: 900;
-  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.25);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .logoBox:hover {
   transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 15px 50px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.35);
 }
 
 .brandText h1 {
@@ -58,35 +58,34 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: -0.5px;
 }
 
 .brandText p {
   margin: 0;
-  color: #9bb0c6;
+  color: #718096;
   font-size: 15px;
   font-weight: 500;
 }
 
 .card {
-  background: rgba(25, 38, 51, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .field {
@@ -96,7 +95,7 @@
 }
 
 .label {
-  color: #fff;
+  color: #2d3748;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
@@ -107,22 +106,24 @@
   align-items: center;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(15, 22, 30, 0.6);
+  border: 2px solid #e2e8f0;
+  background: #f7fafc;
   transition: all 0.3s ease;
 }
 
 .inputWrap:focus-within {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  background: rgba(15, 22, 30, 0.8);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: #ffffff;
 }
 
 .prefix {
   padding: 12px 14px;
-  color: #92adc9;
+  color: #a0aec0;
   display: flex;
   align-items: center;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .input {
@@ -130,22 +131,30 @@
   padding: 14px 16px;
   background: transparent;
   border: 0;
-  color: #e6eef8;
+  color: #2d3748;
   outline: 0;
   font-size: 15px;
+  font-weight: 500;
 }
 
 .input::placeholder {
-  color: #5a6c7d;
+  color: #a0aec0;
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .suffix {
   background: transparent;
   border: 0;
-  color: #92adc9;
+  color: #a0aec0;
   padding: 10px 14px;
   cursor: pointer;
   transition: color 0.2s ease;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .suffix:hover {
@@ -157,13 +166,27 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
+  margin-top: -4px;
 }
 
 .remember {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #92adc9;
+  color: #4a5568;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.remember:hover {
+  color: #2d3748;
 }
 
 .forgot {
@@ -175,28 +198,29 @@
 
 .forgot:hover {
   color: #764ba2;
+  text-decoration: underline;
 }
 
 .submit {
   margin-top: 8px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
-  padding: 14px;
+  padding: 16px;
   border-radius: 12px;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   border: 0;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
-.submit:hover {
+.submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
 }
 
-.submit:active {
+.submit:active:not(:disabled) {
   transform: translateY(0);
 }
 
@@ -207,7 +231,7 @@
 }
 
 .helper {
-  color: #9bb0c6;
+  color: #718096;
   font-size: 14px;
   margin-top: 8px;
 }
@@ -221,62 +245,68 @@
 
 .helper a:hover {
   color: #764ba2;
+  text-decoration: underline;
 }
 
 .footer {
-  color: #9bb0c6;
-  font-size: 12px;
+  color: #a0aec0;
+  font-size: 13px;
   margin-top: 16px;
+  font-weight: 500;
 }
 
 .tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
-  background: rgba(15, 22, 30, 0.4);
+  margin-bottom: 24px;
+  background: #f7fafc;
   padding: 6px;
-  border-radius: 12px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
 }
 
 .tab {
   flex: 1;
   background: transparent;
-  color: #9bb0c6;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  color: #718096;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
   cursor: pointer;
   font-weight: 600;
+  font-size: 15px;
   transition: all 0.2s ease;
 }
 
 .tab:hover {
-  color: #e6eef8;
-  background: rgba(255, 255, 255, 0.03);
+  color: #2d3748;
+  background: rgba(102, 126, 234, 0.05);
 }
 
 .tabActive {
   flex: 1;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(102, 126, 234, 0.3);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
   cursor: pointer;
   font-weight: 700;
-  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+  font-size: 15px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
 }
 
 .msg {
-  background: rgba(255, 107, 107, 0.1);
-  color: #ff6b6b;
-  padding: 12px 16px;
+  background: #fff5f5;
+  color: #e53e3e;
+  padding: 14px 18px;
   border-radius: 12px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(255, 107, 107, 0.2);
+  margin-bottom: 16px;
+  border: 2px solid #feb2b2;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   animation: shake 0.3s ease;
+  text-align: left;
 }
 
 @keyframes shake {
@@ -295,18 +325,34 @@
   }
 }
 
+/* Success message variant */
+.msgSuccess {
+  background: #f0fff4;
+  color: #38a169;
+  border-color: #9ae6b4;
+}
+
 @media (max-width: 600px) {
   .brandText h1 {
     font-size: 26px;
   }
 
   .card {
-    padding: 24px;
+    padding: 28px 24px;
   }
 
   .logoBox {
     width: 70px;
     height: 70px;
     font-size: 28px;
+  }
+
+  .form {
+    gap: 16px;
+  }
+
+  .submit {
+    padding: 14px;
+    font-size: 15px;
   }
 }

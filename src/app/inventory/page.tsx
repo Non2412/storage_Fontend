@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import CartDrawer from '@/components/CartDrawer';
+import QuantityModal from '@/components/QuantityModal';
 import { useCart } from '@/contexts/CartContext';
 import styles from './inventory.module.css';
 import { getItems, getCurrentUser, getShelters, getWarehouses, getStockStatus, type Item, type Shelter, type StockItem } from '@/lib/api';
@@ -39,7 +40,12 @@ export default function InventoryPage() {
   const [selectedShelterId, setSelectedShelterId] = useState<string>('');
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Quantity Modal State
+  const [isQuantityModalOpen, setIsQuantityModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+
   const { addToCart } = useCart();
+
 
   useEffect(() => {
     setIsMounted(true);
@@ -170,16 +176,27 @@ export default function InventoryPage() {
       return;
     }
 
+    // Open modal to ask for quantity
+    setSelectedItem(item);
+    setIsQuantityModalOpen(true);
+  };
+
+  const handleConfirmQuantity = (quantity: number) => {
+    if (!selectedItem) return;
+
     addToCart({
-      itemId: item.id,
-      itemName: item.name,
-      quantity: 1,
-      unit: item.unit,
-      maxAvailable: item.quantity
+      itemId: selectedItem.id,
+      itemName: selectedItem.name,
+      quantity: quantity,
+      unit: selectedItem.unit,
+      maxAvailable: selectedItem.quantity
     });
 
     // Show feedback
-    alert(`✅ เพิ่ม "${item.name}" ลงตะกร้าแล้ว!\n\nคลิกที่ปุ่ม "ตะกร้าสินค้า" เพื่อดูรายการและส่งคำขอ`);
+    alert(`✅ เพิ่ม "${selectedItem.name}" จำนวน ${quantity} ${selectedItem.unit} ลงตะกร้าแล้ว!\n\nคลิกที่ปุ่ม "ตะกร้าสินค้า" เพื่อดูรายการและส่งคำขอ`);
+
+    // Reset selected item
+    setSelectedItem(null);
   };
 
   if (!isMounted) {
@@ -417,6 +434,21 @@ export default function InventoryPage() {
           onClose={() => setIsCartOpen(false)}
           shelterId={selectedShelterId}
         />
+
+        {/* Quantity Modal */}
+        {selectedItem && (
+          <QuantityModal
+            isOpen={isQuantityModalOpen}
+            onClose={() => {
+              setIsQuantityModalOpen(false);
+              setSelectedItem(null);
+            }}
+            onConfirm={handleConfirmQuantity}
+            itemName={selectedItem.name}
+            unit={selectedItem.unit}
+            maxAvailable={selectedItem.quantity}
+          />
+        )}
       </div>
     </AppLayout>
   );

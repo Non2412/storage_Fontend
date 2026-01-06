@@ -5,9 +5,10 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  color: #e6eef8;
+  color: #495057;
   text-align: center;
   animation: fadeInUp 0.6s ease-out;
+  font-family: 'Inter', sans-serif;
 }
 
 @keyframes fadeInUp {
@@ -41,13 +42,13 @@
   color: #fff;
   font-size: 32px;
   font-weight: 900;
-  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.25);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .logoBox:hover {
   transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 15px 50px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.35);
 }
 
 .brandText h1 {
@@ -62,31 +63,29 @@
 
 .brandText p {
   margin: 0;
-  color: #9bb0c6;
+  color: #868e96;
   font-size: 15px;
   font-weight: 500;
 }
 
 .card {
-  background: rgba(25, 38, 51, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid #f1f3f5;
 }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 25px 50px rgba(102, 126, 234, 0.08);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .field {
@@ -96,10 +95,11 @@
 }
 
 .label {
-  color: #fff;
+  color: #343a40;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
+  margin-left: 4px;
 }
 
 .inputWrap {
@@ -107,42 +107,48 @@
   align-items: center;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(15, 22, 30, 0.6);
-  transition: all 0.3s ease;
+  border: 1px solid #dee2e6;
+  background: #f8f9fa;
+  transition: all 0.2s ease;
 }
 
 .inputWrap:focus-within {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  background: rgba(15, 22, 30, 0.8);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: #ffffff;
 }
 
 .prefix {
   padding: 12px 14px;
-  color: #92adc9;
+  color: #adb5bd;
   display: flex;
   align-items: center;
 }
 
+.prefix span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .input {
   flex: 1;
-  padding: 14px 16px;
+  padding: 14px 16px 14px 0;
   background: transparent;
   border: 0;
-  color: #e6eef8;
+  color: #495057;
   outline: 0;
   font-size: 15px;
+  font-weight: 500;
 }
 
 .input::placeholder {
-  color: #5a6c7d;
+  color: #adb5bd;
 }
 
 .suffix {
   background: transparent;
   border: 0;
-  color: #92adc9;
+  color: #adb5bd;
   padding: 10px 14px;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -156,14 +162,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
+  margin-top: -4px;
 }
 
 .remember {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #92adc9;
+  color: #868e96;
+  cursor: pointer;
+}
+
+.remember input {
+  accent-color: #667eea;
+  width: 16px;
+  height: 16px;
 }
 
 .forgot {
@@ -174,26 +188,27 @@
 }
 
 .forgot:hover {
-  color: #764ba2;
+  color: #5a67d8;
+  text-decoration: underline;
 }
 
 .submit {
-  margin-top: 8px;
+  margin-top: 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
-  padding: 14px;
+  padding: 16px;
   border-radius: 12px;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   border: 0;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .submit:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
 }
 
 .submit:active {
@@ -201,13 +216,15 @@
 }
 
 .submit:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
+  filter: grayscale(0.5);
 }
 
 .helper {
-  color: #9bb0c6;
+  color: #868e96;
   font-size: 14px;
   margin-top: 8px;
 }
@@ -220,63 +237,68 @@
 }
 
 .helper a:hover {
-  color: #764ba2;
+  color: #5a67d8;
+  text-decoration: underline;
 }
 
 .footer {
-  color: #9bb0c6;
+  color: #adb5bd;
   font-size: 12px;
-  margin-top: 16px;
+  margin-top: 24px;
 }
 
 .tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  background: rgba(15, 22, 30, 0.4);
-  padding: 6px;
-  border-radius: 12px;
+  background: #f1f3f5;
+  padding: 4px;
+  border-radius: 14px;
+  margin-bottom: 24px;
 }
 
 .tab {
   flex: 1;
   background: transparent;
-  color: #9bb0c6;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  color: #868e96;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .tab:hover {
-  color: #e6eef8;
-  background: rgba(255, 255, 255, 0.03);
+  color: #495057;
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .tabActive {
   flex: 1;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(102, 126, 234, 0.3);
-  cursor: pointer;
+  background: #ffffff;
+  color: #667eea;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  cursor: default;
   font-weight: 700;
-  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .msg {
-  background: rgba(255, 107, 107, 0.1);
+  background: #fff5f5;
   color: #ff6b6b;
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-radius: 12px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(255, 107, 107, 0.2);
+  margin-bottom: 16px;
+  border: 1px solid #ffc9c9;
   font-size: 14px;
   font-weight: 500;
   animation: shake 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes shake {
@@ -302,6 +324,14 @@
 
   .card {
     padding: 24px;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+  }
+
+  .inputWrap {
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   }
 
   .logoBox {

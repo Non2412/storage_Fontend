@@ -62,13 +62,12 @@ async function apiCall<T = unknown>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Debug: Log request body for approve/transfer endpoints
-  if (endpoint.includes('/approve') || endpoint.includes('/transfer')) {
-    console.log('=== API Request Debug ===');
-    console.log('Endpoint:', endpoint);
-    console.log('Body:', options.body);
-    console.log('Headers:', headers);
-  }
+  // Debug: Always log requests during debugging
+  console.log('=== API Request Start ===');
+  console.log('URL:', `${API_BASE_URL}${endpoint}`);
+  console.log('Method:', options.method || 'GET');
+  console.log('Body:', options.body);
+  console.log('Headers:', headers);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -76,21 +75,29 @@ async function apiCall<T = unknown>(
       headers,
     });
 
+    console.log('Response Status:', response.status);
     const contentType = response.headers.get('Content-Type');
+    console.log('Response Content-Type:', contentType);
+
     let data;
+    const responseText = await response.text();
+    console.log('Raw Response Body:', responseText); // Critical for debugging empty responses
 
     if (contentType && contentType.includes('application/json')) {
       try {
-        data = await response.json();
+        data = responseText ? JSON.parse(responseText) : {};
       } catch (parseError) {
         console.error('JSON Parse Error:', parseError);
-        return { success: false, message: 'ข้อมูลจากเซิร์ฟเวอร์ผิดพลาด' };
+        return { success: false, message: 'ข้อมูลจากเซิร์ฟเวอร์ผิดพลาด (JSON Parse Error)' };
       }
     } else {
-      // If it's HTML or something else, handle it safely
-      const text = await response.text();
-      console.warn('Unexpected non-JSON response:', text.substring(0, 100));
-      return { success: false, message: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ในขณะนี้ (HTML Response)' };
+      // Try parsing as JSON anyway in case header is missing but body is JSON
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        console.warn('Unexpected non-JSON response');
+        return { success: false, message: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ในขณะนี้ (Invalid Response Type)' };
+      }
     }
 
     if (!response.ok) {

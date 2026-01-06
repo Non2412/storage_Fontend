@@ -683,21 +683,6 @@ export default function AdminDashboard() {
             </div>
             <span className={styles.logoText}>Materially</span>
           </div>
-
-          <div className={styles.searchBar}>
-            <Search size={16} className={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="ค้นหา..."
-              className={styles.searchInput}
-            />
-          </div>
-
-          <div className={styles.headerRight}>
-            <div className={styles.headerBtn}>
-              <Bell size={20} />
-            </div>
-          </div>
         </header>
 
         {/* Content Area */}
@@ -797,51 +782,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Distribution Tracking */}
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h3 className={styles.chartTitle}>ติดตามการกระจายของ</h3>
-                      <button onClick={() => setActiveTab('distribution')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {distributionTasks.map(task => (
-                        <div key={task.id} className={styles.distributionItem}>
-                          <div className={styles.statusDot} style={{
-                            backgroundColor: task.status === 'delivered' ? '#40c057' : task.status === 'shipping' ? '#339af0' : '#fab005'
-                          }}></div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14px', fontWeight: '600' }}>{task.items}</div>
-                            <div style={{ fontSize: '12px', color: '#868e96' }}>→ {task.shelter}</div>
-                          </div>
-                          <div style={{ fontSize: '12px', fontWeight: '500', color: '#495057' }}>{task.time}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
-                  {/* System Notifications */}
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h3 className={styles.chartTitle}>การแจ้งเตือนระบบ</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {notifications.map(notif => (
-                        <div key={notif.id} className={styles.notificationItem}>
-                          <div className={styles.notifIcon} style={{
-                            backgroundColor: notif.type === 'critical' ? '#fff5f5' : notif.type === 'request' ? '#e7f5ff' : '#fff9db'
-                          }}>
-                            {notif.type === 'critical' ? <AlertCircle size={18} color="#fa5252" /> :
-                              notif.type === 'request' ? <FileText size={18} color="#228be6" /> :
-                                <Package size={18} color="#f08c00" />}
-                          </div>
-                          <div className={styles.notifContent}>
-                            <div className={styles.notifMsg}>{notif.msg}</div>
-                            <div className={styles.notifTime}>{notif.time}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
                   {/* Stock Status Central */}
                   <div className={styles.chartCard} style={{ gridColumn: sidebarOpen ? 'span 2' : 'span 1' }}>

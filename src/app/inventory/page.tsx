@@ -39,6 +39,11 @@ export default function InventoryPage() {
   const [selectedShelterId, setSelectedShelterId] = useState<string>('');
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Modal State
+  const [isQuantityModalOpen, setIsQuantityModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [quantity, setQuantity] = useState(1);
+
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -170,16 +175,31 @@ export default function InventoryPage() {
       return;
     }
 
+    setSelectedItem(item);
+    setQuantity(1);
+    setIsQuantityModalOpen(true);
+  };
+
+  const confirmAddToCart = () => {
+    if (!selectedItem) return;
+
+    // Final validation
+    if (quantity > selectedItem.quantity) {
+      alert('จำนวนสินค้าเกินกว่าที่มีในคลัง');
+      return;
+    }
+
     addToCart({
-      itemId: item.id,
-      itemName: item.name,
-      quantity: 1,
-      unit: item.unit,
-      maxAvailable: item.quantity
+      itemId: selectedItem.id,
+      itemName: selectedItem.name,
+      quantity: quantity,
+      unit: selectedItem.unit,
+      maxAvailable: selectedItem.quantity
     });
 
-    // Show feedback
-    alert(`✅ เพิ่ม "${item.name}" ลงตะกร้าแล้ว!\n\nคลิกที่ปุ่ม "ตะกร้าสินค้า" เพื่อดูรายการและส่งคำขอ`);
+    setIsQuantityModalOpen(false);
+    // Don't open cart drawer as requested
+    // setIsCartOpen(true);
   };
 
   if (!isMounted) {
@@ -417,6 +437,91 @@ export default function InventoryPage() {
           onClose={() => setIsCartOpen(false)}
           shelterId={selectedShelterId}
         />
+
+        {/* Quantity Modal */}
+        {isQuantityModalOpen && selectedItem && (
+          <div className={styles.modalOverlay} onClick={() => setIsQuantityModalOpen(false)}>
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h2>ระบุจำนวน</h2>
+                <button className={styles.closeButton} onClick={() => setIsQuantityModalOpen(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div className={styles.modalBody}>
+                <div className={styles.selectedItemCard}>
+                  <div className={styles.selectedItemIcon}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                  </div>
+                  <div className={styles.selectedItemInfo}>
+                    <h3>{selectedItem.name}</h3>
+                    <p>มีในคลัง: {selectedItem.quantity} {selectedItem.unit}</p>
+                  </div>
+                </div>
+
+                <div className={styles.quantityControl}>
+                  <div className={styles.quantityLabel}>จำนวนที่ต้องการ</div>
+                  <div className={styles.quantitySelector}>
+                    <button
+                      className={styles.quantityBtn}
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={quantity <= 1}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      className={`${styles.quantityInput} ${quantity > selectedItem.quantity ? styles.inputError : ''}`}
+                      value={quantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) setQuantity(val);
+                      }}
+                      min="1"
+                    />
+                    <button
+                      className={styles.quantityBtn}
+                      onClick={() => setQuantity(quantity + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className={styles.unitLabel}>{selectedItem.unit}</div>
+
+                  {quantity > selectedItem.quantity && (
+                    <div className={styles.errorMessage}>
+                      <span className={styles.errorIcon}>⚠️</span>
+                      จำนวนสิ่งของที่ต้องการไม่เพียงพอ
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.modalFooter}>
+                <button
+                  className={styles.cancelButton}
+                  onClick={() => setIsQuantityModalOpen(false)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  className={styles.submitButton}
+                  onClick={confirmAddToCart}
+                  disabled={quantity > selectedItem.quantity}
+                >
+                  ✓ เพิ่มลงตะกร้า
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

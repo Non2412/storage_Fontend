@@ -71,7 +71,7 @@ export default function CartDrawer({ isOpen, onClose, shelterId }: CartDrawerPro
                         <ShoppingCart size={24} />
                         <div>
                             <h2 className={styles.title}>ตะกร้าสินค้า</h2>
-                            <p className={styles.subtitle}>{getTotalItems()} รายการ</p>
+                            <p className={styles.subtitle}>{cart.length} รายการ</p>
                         </div>
                     </div>
                     <button className={styles.closeBtn} onClick={onClose}>
@@ -178,7 +178,7 @@ export default function CartDrawer({ isOpen, onClose, shelterId }: CartDrawerPro
                             disabled={isSubmitting}
                         >
                             <Send size={18} />
-                            {isSubmitting ? 'กำลังส่ง...' : `ส่งคำขอ (${getTotalItems()} รายการ)`}
+                            {isSubmitting ? 'กำลังส่ง...' : `ส่งคำขอ (${cart.length} รายการ)`}
                         </button>
                     </div>
                 )}

@@ -10,7 +10,7 @@ export default function Sidebar() {
     const router = useRouter();
     const pathname = usePathname();
     const [isMounted, setIsMounted] = useState(false);
-    const { getTotalItems } = useCart();
+    const { cart } = useCart();
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -73,7 +73,7 @@ export default function Sidebar() {
         }
     ];
 
-    const totalItems = getTotalItems();
+    const totalItems = cart.length;
 
     return (
         <aside className={styles.sidebar}>

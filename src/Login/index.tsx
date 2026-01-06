@@ -151,7 +151,7 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>อีเมล</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">email</span></div>
+                <div className={styles.prefix}><span className="material-symbols-outlined">Email</span></div>
                 <input value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" disabled={isLoading} />
               </div>
             </div>

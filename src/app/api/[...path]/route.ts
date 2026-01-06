@@ -56,12 +56,13 @@ async function handleProxy(
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         body = await request.text();
-      } catch {
-        // No body
+        console.log(`[Proxy] Incoming Body for ${targetUrl}:`, body);
+      } catch (e) {
+        console.warn('[Proxy] Failed to read body:', e);
       }
     }
 
-    console.log(`Proxying ${request.method} to: ${targetUrl}`);
+    console.log(`[Proxy] Forwarding ${request.method} to: ${targetUrl}`);
 
     // Make request to backend
     const response = await fetch(targetUrl, {
@@ -70,8 +71,11 @@ async function handleProxy(
       body,
     });
 
+    console.log(`[Proxy] Backend Response Status: ${response.status}`);
+
     // Get response data
     const data = await response.text();
+    console.log(`[Proxy] Backend Response Body Preview:`, data.substring(0, 200));
 
     // Return response with CORS headers
     return new NextResponse(data, {

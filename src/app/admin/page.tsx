@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   BarChart3, Users, Home, Package, AlertCircle,
   LogOut, Menu, X, Bell, Search,
-  FileText, ClipboardList, LayoutDashboard, Edit3, Check, XCircle
+  FileText, ClipboardList, LayoutDashboard, Edit3, Check, XCircle, Upload, FileSpreadsheet, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   LineChart, Line, PieChart, Pie, Cell,
   Tooltip, ResponsiveContainer
@@ -43,6 +44,12 @@ export default function AdminDashboard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [editedQuantities, setEditedQuantities] = useState<{[itemId: string]: number}>({});
+
+  // Excel Upload Modal State
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
+  const [excelData, setExcelData] = useState<any[]>([]);
+  const [excelFileName, setExcelFileName] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -440,6 +447,142 @@ export default function AdminDashboard() {
     } catch (error) {
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     }
+  };
+
+  // ฟังก์ชันอ่านไฟล์ Excel
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setExcelFileName(file.name);
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      try {
+        const data = event.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        // Map column names to our format
+        const mappedData = jsonData.map((row: any, index: number) => ({
+          id: index + 1,
+          name: row['ชื่อศูนย์พักพิง'] || row['name'] || row['ชื่อ'] || '',
+          province: row['จังหวัด'] || row['province'] || '',
+          district: row['อำเภอ'] || row['district'] || '',
+          address: row['ที่อยู่'] || row['address'] || '',
+          capacity: parseInt(row['ความจุทั้งหมด'] || row['capacity'] || row['ความจุ'] || 0),
+          currentPeople: parseInt(row['จำนวนคนปัจจุบัน'] || row['currentPeople'] || row['จำนวนคน'] || 0),
+          phone: row['เบอร์โทร'] || row['phone'] || row['โทรศัพท์'] || '',
+          contactName: row['ผู้ติดต่อ'] || row['contactName'] || ''
+        })).filter((item: any) => item.name); // กรองเฉพาะที่มีชื่อ
+        
+        setExcelData(mappedData);
+      } catch (error) {
+        console.error('Error reading Excel:', error);
+        alert('ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์');
+      }
+    };
+    
+    reader.readAsBinaryString(file);
+  };
+
+  // ฟังก์ชันบันทึกข้อมูลจาก Excel (ใช้ bulk API)
+  const handleExcelSubmit = async () => {
+    if (excelData.length === 0) {
+      alert('ไม่มีข้อมูลที่จะบันทึก');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // เตรียมข้อมูลสำหรับ bulk insert
+      const sheltersToInsert = excelData.map(shelter => ({
+        name: shelter.name,
+        province: shelter.province,
+        district: shelter.district,
+        address: shelter.address,
+        capacity: shelter.capacity,
+        currentPeople: shelter.currentPeople,
+        phone: shelter.phone,
+        contactName: shelter.contactName,
+        status: 'normal'
+      }));
+
+      const result = await fetch('/api/shelters/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('ndr_token')}`
+        },
+        body: JSON.stringify({ shelters: sheltersToInsert })
+      });
+
+      const data = await result.json();
+
+      setIsUploading(false);
+
+      if (result.ok && data.success) {
+        alert(`✅ นำเข้าสำเร็จ ${data.data?.inserted || excelData.length} รายการ!`);
+        setExcelModalOpen(false);
+        setExcelData([]);
+        setExcelFileName('');
+        fetchInitialData();
+      } else {
+        alert(`❌ เกิดข้อผิดพลาด: ${data.message || 'ไม่สามารถนำเข้าข้อมูลได้'}`);
+      }
+    } catch (error) {
+      setIsUploading(false);
+      alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
+  // ฟังก์ชัน Export ข้อมูลศูนย์พักพิงเป็น Excel
+  const handleExportExcel = () => {
+    if (shelters.length === 0) {
+      alert('ไม่มีข้อมูลที่จะส่งออก');
+      return;
+    }
+
+    // แปลงข้อมูลเป็นรูปแบบที่ต้องการ
+    const exportData = shelters.map((shelter: any, index: number) => ({
+      'ลำดับ': index + 1,
+      'ชื่อศูนย์พักพิง': shelter.name || '',
+      'จังหวัด': shelter.province || '',
+      'อำเภอ': shelter.district || '',
+      'ที่อยู่': shelter.address || '',
+      'ความจุทั้งหมด': shelter.capacity || 0,
+      'จำนวนคนปัจจุบัน': shelter.currentPeople || 0,
+      'สถานะ': shelter.status === 'critical' ? 'วิกฤต' : shelter.status === 'warning' ? 'ใกล้เต็ม' : 'ปกติ',
+      'เบอร์โทร': shelter.phone || '',
+      'ผู้ติดต่อ': shelter.contactName || ''
+    }));
+
+    // สร้าง workbook และ worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'ศูนย์พักพิง');
+
+    // ปรับความกว้างคอลัมน์
+    const colWidths = [
+      { wch: 6 },   // ลำดับ
+      { wch: 30 },  // ชื่อศูนย์
+      { wch: 15 },  // จังหวัด
+      { wch: 15 },  // อำเภอ
+      { wch: 40 },  // ที่อยู่
+      { wch: 12 },  // ความจุ
+      { wch: 15 },  // จำนวนคน
+      { wch: 10 },  // สถานะ
+      { wch: 15 },  // เบอร์โทร
+      { wch: 20 },  // ผู้ติดต่อ
+    ];
+    worksheet['!cols'] = colWidths;
+
+    // ดาวน์โหลดไฟล์
+    const fileName = `ศูนย์พักพิง_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
   };
 
   // ข้อมูลจำลองสำหรับคลังสินค้า (ยังไม่มี API คลังโดยตรง)
@@ -1041,13 +1184,51 @@ export default function AdminDashboard() {
                     <h3 className={styles.chartTitle}>จัดการข้อมูลศูนย์พักพิง</h3>
                     <p style={{ color: '#868e96', fontSize: '14px' }}>รองรับรายการศูนย์กว่า 500 แห่งทั่วประเทศ</p>
                   </div>
-                  <button
-                    onClick={() => setIsShelterModalOpen(true)}
-                    className={styles.approveBtn}
-                    style={{ backgroundColor: '#4361ee' }}
-                  >
-                    + เพิ่มศูนย์ใหม่
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => setExcelModalOpen(true)}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#40c057',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      <FileSpreadsheet size={16} /> นำเข้าจาก Excel
+                    </button>
+                    <button
+                      onClick={handleExportExcel}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#228be6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      <Download size={16} /> ส่งออก Excel
+                    </button>
+                    <button
+                      onClick={() => setIsShelterModalOpen(true)}
+                      className={styles.approveBtn}
+                      style={{ backgroundColor: '#4361ee' }}
+                    >
+                      + เพิ่มศูนย์ใหม่
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.filterBar}>
@@ -1978,6 +2159,157 @@ export default function AdminDashboard() {
                     >
                       <Check size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                       อนุมัติ & โอนของ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal นำเข้าจาก Excel */}
+            {excelModalOpen && (
+              <div className={styles.modalOverlay}>
+                <div className={styles.modalContent} style={{ maxWidth: '900px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div className={styles.modalHeader}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FileSpreadsheet size={20} color="#40c057" />
+                        นำเข้าศูนย์พักพิงจาก Excel
+                      </h3>
+                      <p style={{ color: '#868e96', fontSize: '14px', margin: '4px 0 0' }}>
+                        อัพโหลดไฟล์ .xlsx หรือ .xls ที่มีข้อมูลศูนย์พักพิง
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setExcelModalOpen(false); setExcelData([]); setExcelFileName(''); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                    >
+                      <X size={20} color="#868e96" />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+                    {/* Upload Zone */}
+                    <div style={{
+                      border: '2px dashed #dee2e6',
+                      borderRadius: '12px',
+                      padding: '30px',
+                      textAlign: 'center',
+                      backgroundColor: '#f8f9fa',
+                      marginBottom: '20px'
+                    }}>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleExcelUpload}
+                        style={{ display: 'none' }}
+                        id="excel-upload"
+                      />
+                      <label htmlFor="excel-upload" style={{ cursor: 'pointer' }}>
+                        <Upload size={48} color="#adb5bd" style={{ marginBottom: '12px' }} />
+                        <p style={{ fontSize: '16px', fontWeight: '500', color: '#495057', margin: '0 0 8px' }}>
+                          คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่
+                        </p>
+                        <p style={{ fontSize: '13px', color: '#868e96', margin: 0 }}>
+                          รองรับไฟล์ .xlsx, .xls
+                        </p>
+                      </label>
+                      {excelFileName && (
+                        <div style={{ marginTop: '12px', padding: '8px 16px', backgroundColor: '#e7f5ff', borderRadius: '8px', display: 'inline-block' }}>
+                          <span style={{ color: '#1971c2', fontWeight: '500' }}>📄 {excelFileName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* รูปแบบไฟล์ที่รองรับ */}
+                    <div style={{ backgroundColor: '#fff9db', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px' }}>
+                      <p style={{ fontSize: '13px', color: '#e67700', margin: 0, fontWeight: '500' }}>
+                        💡 รูปแบบคอลัมน์ที่รองรับ: ชื่อศูนย์พักพิง, จังหวัด, อำเภอ, ที่อยู่, ความจุทั้งหมด, จำนวนคนปัจจุบัน, เบอร์โทร, ผู้ติดต่อ
+                      </p>
+                    </div>
+
+                    {/* Preview Table */}
+                    {excelData.length > 0 && (
+                      <div>
+                        <h4 style={{ margin: '0 0 12px', color: '#495057' }}>
+                          ตัวอย่างข้อมูล ({excelData.length} รายการ)
+                        </h4>
+                        <div style={{ overflowX: 'auto', maxHeight: '300px', border: '1px solid #e9ecef', borderRadius: '8px' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                            <thead>
+                              <tr style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0 }}>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>#</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>ชื่อศูนย์</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>จังหวัด</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>อำเภอ</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e9ecef' }}>ความจุ</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e9ecef' }}>จำนวนคน</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>เบอร์โทร</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {excelData.slice(0, 10).map((row, idx) => (
+                                <tr key={idx} style={{ borderBottom: '1px solid #f1f3f5' }}>
+                                  <td style={{ padding: '10px', color: '#868e96' }}>{idx + 1}</td>
+                                  <td style={{ padding: '10px', fontWeight: '500' }}>{row.name}</td>
+                                  <td style={{ padding: '10px' }}>{row.province}</td>
+                                  <td style={{ padding: '10px' }}>{row.district}</td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>{row.capacity}</td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>{row.currentPeople}</td>
+                                  <td style={{ padding: '10px' }}>{row.phone}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {excelData.length > 10 && (
+                            <div style={{ padding: '10px', textAlign: 'center', color: '#868e96', backgroundColor: '#f8f9fa' }}>
+                              ... และอีก {excelData.length - 10} รายการ
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid #e9ecef', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setExcelModalOpen(false); setExcelData([]); setExcelFileName(''); }}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f8f9fa',
+                        color: '#495057',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleExcelSubmit}
+                      disabled={excelData.length === 0 || isUploading}
+                      style={{
+                        padding: '10px 24px',
+                        backgroundColor: excelData.length === 0 ? '#adb5bd' : '#40c057',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: excelData.length === 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {isUploading ? (
+                        <>กำลังนำเข้า...</>
+                      ) : (
+                        <>
+                          <Check size={16} />
+                          นำเข้า {excelData.length} รายการ
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

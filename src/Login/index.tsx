@@ -114,7 +114,7 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>อีเมล</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">Email</span></div>
+                <div className={styles.prefix}>📧</div>
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" disabled={isLoading} />
               </div>
             </div>
@@ -122,10 +122,10 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>รหัสผ่าน</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">Password</span></div>
+                <div className={styles.prefix}>🔒</div>
                 <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type={show ? "text" : "password"} disabled={isLoading} />
                 <button type="button" className={styles.suffix} onClick={togglePassword} aria-label="toggle">
-                  <span className="material-symbols-outlined">{show ? "ปิดรหัสผ่าน" : "ตรวจสอบ"}</span>
+                  {show ? "ซ่อน" : "แสดง"}
                 </button>
               </div>
             </div>
@@ -144,28 +144,28 @@ export default function Login() {
             <div className={styles.field}>
               <label className={styles.label}>ชื่อ - นามสกุล</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">Name</span></div>
+                <div className={styles.prefix}>👤</div>
                 <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ นามสกุล" className={styles.input} type="text" disabled={isLoading} />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>อีเมล</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">Email</span></div>
+                <div className={styles.prefix}>📧</div>
                 <input value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="you@example.com" className={styles.input} type="email" disabled={isLoading} />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>รหัสผ่าน</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">Password</span></div>
+                <div className={styles.prefix}>🔒</div>
                 <input value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="รหัสผ่าน" className={styles.input} type="password" disabled={isLoading} />
               </div>
             </div>
             <div className={styles.field}>
               <label className={styles.label}>เบอร์โทร</label>
               <div className={styles.inputWrap}>
-                <div className={styles.prefix}><span className="material-symbols-outlined">Number</span></div>
+                <div className={styles.prefix}>📱</div>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812345678" className={styles.input} type="tel" disabled={isLoading} />
               </div>
             </div>

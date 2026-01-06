@@ -88,49 +88,6 @@ export default function DashboardPage() {
 
         {/* Content */}
         <div className={styles.content}>
-          {/* Top Stats Row */}
-          <div className={styles.statsRow}>
-            <div className={styles.statCardTop}>
-              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
-                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16" />
-                  <rect x="3" y="21" width="18" height="2" />
-                </svg>
-              </div>
-              <div className={styles.statLabel}>ศูนย์อพยพพักพิง</div>
-            </div>
-
-            <div className={styles.statCardTop}>
-              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)' }}>
-                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-              </div>
-              <div className={styles.statLabel}>ศูนย์พักพิง</div>
-            </div>
-
-            <div className={styles.statCardTop}>
-              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #ec4899, #db2777)' }}>
-                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                  <line x1="7" y1="7" x2="7.01" y2="7" />
-                </svg>
-              </div>
-              <div className={styles.statLabel}>สิ่งของบริจาค</div>
-            </div>
-
-            <div className={styles.statCardTop}>
-              <div className={styles.statIconWrapper} style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
-                <svg className={styles.statIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
-              <div className={styles.statLabel}>คำร้องขอความช่วยเหลือ</div>
-            </div>
-          </div>
-
           {/* Bottom Detail Cards */}
           <div className={styles.detailCardsRow}>
             <div className={styles.detailCard}>

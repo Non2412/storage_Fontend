@@ -671,9 +671,46 @@ export async function rejectRequest(
     }
   }
 
+  // Use POST /api/requests/:id/reject endpoint
   return apiCall<Request>(`/api/requests/${requestId}/reject`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({ 
+      reason: reason || 'ปฏิเสธโดยแอดมิน'
+    }),
+  });
+}
+
+// Alias for cancelRequest - ใช้ /reject endpoint (Backend รองรับ shelter_staff ยกเลิกคำร้องของตัวเองแล้ว)
+export async function cancelRequest(
+  requestId: string,
+  reason?: string
+): Promise<ApiResponse<Request>> {
+  // Demo Mode: Check if it's a local request first
+  if (requestId.startsWith('local_') && typeof window !== 'undefined') {
+    const existingRaw = localStorage.getItem('demo_requests');
+    if (existingRaw) {
+      const requests = JSON.parse(existingRaw);
+      const targetIndex = requests.findIndex((r: any) => r._id === requestId);
+      if (targetIndex !== -1) {
+        requests[targetIndex].status = 'rejected';
+        requests[targetIndex].rejectionReason = reason || 'ยกเลิกโดยผู้ขอ';
+        requests[targetIndex].updatedAt = new Date().toISOString();
+        localStorage.setItem('demo_requests', JSON.stringify(requests));
+        return {
+          success: true,
+          data: requests[targetIndex],
+          message: 'ยกเลิกคำร้องเรียบร้อย'
+        };
+      }
+    }
+  }
+
+  // Use POST /api/requests/:id/reject endpoint (รองรับ shelter_staff ยกเลิกคำร้องของตัวเอง)
+  return apiCall<Request>(`/api/requests/${requestId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ 
+      reason: reason || 'ยกเลิกโดยผู้ขอ'
+    }),
   });
 }
 

@@ -117,14 +117,9 @@ a.secondary {
   position: absolute;
   inset: 0;
   z-index: 0;
-  /* Gradient + explicit Unsplash image (stable image) as background with fallback */
-  /* Gradient + project-local image (place licensed iStock image at /public/images/istock-bg.jpg) */
-  background-color: #071025;
-  /* fallback color */
-  background-image: linear-gradient(rgba(7, 16, 37, 0.45), rgba(7, 16, 37, 0.45)), url('/images/istock-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  /* Clean white background */
+  background-color: #ffffff;
+  background-image: none;
   min-height: 100vh;
 }
 

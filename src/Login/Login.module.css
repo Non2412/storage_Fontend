@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  color: #495057;
+  color: #e6eef8;
   text-align: center;
   animation: fadeInUp 0.6s ease-out;
   font-family: 'Inter', sans-serif;
@@ -59,27 +59,31 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: -0.5px;
 }
 
 .brandText p {
   margin: 0;
-  color: #868e96;
+  color: #9bb0c6;
   font-size: 15px;
   font-weight: 500;
 }
 
 .card {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 40px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+  background: rgba(25, 38, 51, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border: 1px solid #f1f3f5;
 }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 25px 50px rgba(102, 126, 234, 0.08);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .form {
@@ -95,7 +99,7 @@
 }
 
 .label {
-  color: #343a40;
+  color: #fff;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
@@ -107,9 +111,9 @@
   align-items: center;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #dee2e6;
-  background: #f8f9fa;
-  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 22, 30, 0.6);
+  transition: all 0.3s ease;
 }
 
 .inputWrap:focus-within {
@@ -120,9 +124,11 @@
 
 .prefix {
   padding: 12px 14px;
-  color: #adb5bd;
+  color: #92adc9;
   display: flex;
   align-items: center;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .prefix span {
@@ -135,23 +141,25 @@
   padding: 14px 16px 14px 0;
   background: transparent;
   border: 0;
-  color: #495057;
+  color: #e6eef8;
   outline: 0;
   font-size: 15px;
   font-weight: 500;
 }
 
 .input::placeholder {
-  color: #adb5bd;
+  color: #5a6c7d;
 }
 
 .suffix {
   background: transparent;
   border: 0;
-  color: #adb5bd;
+  color: #92adc9;
   padding: 10px 14px;
   cursor: pointer;
   transition: color 0.2s ease;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .suffix:hover {
@@ -162,22 +170,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
-  margin-top: -4px;
+  font-size: 13px;
 }
 
 .remember {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: #868e96;
-  cursor: pointer;
-}
-
-.remember input {
-  accent-color: #667eea;
-  width: 16px;
-  height: 16px;
+  color: #92adc9;
 }
 
 .forgot {
@@ -188,8 +188,7 @@
 }
 
 .forgot:hover {
-  color: #5a67d8;
-  text-decoration: underline;
+  color: #764ba2;
 }
 
 .submit {
@@ -206,12 +205,12 @@
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.submit:hover {
+.submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
-.submit:active {
+.submit:active:not(:disabled) {
   transform: translateY(0);
 }
 
@@ -224,7 +223,7 @@
 }
 
 .helper {
-  color: #868e96;
+  color: #9bb0c6;
   font-size: 14px;
   margin-top: 8px;
 }
@@ -237,68 +236,63 @@
 }
 
 .helper a:hover {
-  color: #5a67d8;
-  text-decoration: underline;
+  color: #764ba2;
 }
 
 .footer {
-  color: #adb5bd;
+  color: #9bb0c6;
   font-size: 12px;
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 .tabs {
   display: flex;
-  background: #f1f3f5;
-  padding: 4px;
-  border-radius: 14px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 16px;
+  background: rgba(15, 22, 30, 0.4);
+  padding: 6px;
+  border-radius: 12px;
 }
 
 .tab {
   flex: 1;
   background: transparent;
-  color: #868e96;
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
+  color: #9bb0c6;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .tab:hover {
-  color: #495057;
-  background: rgba(0, 0, 0, 0.03);
+  color: #e6eef8;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .tabActive {
   flex: 1;
-  background: #ffffff;
-  color: #667eea;
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  cursor: default;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  cursor: pointer;
   font-weight: 700;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
 }
 
 .msg {
-  background: #fff5f5;
+  background: rgba(255, 107, 107, 0.1);
   color: #ff6b6b;
-  padding: 14px 16px;
+  padding: 12px 16px;
   border-radius: 12px;
-  margin-bottom: 16px;
-  border: 1px solid #ffc9c9;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 107, 107, 0.2);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   animation: shake 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 @keyframes shake {
@@ -317,6 +311,13 @@
   }
 }
 
+/* Success message variant */
+.msgSuccess {
+  background: #f0fff4;
+  color: #38a169;
+  border-color: #9ae6b4;
+}
+
 @media (max-width: 600px) {
   .brandText h1 {
     font-size: 26px;
@@ -324,19 +325,20 @@
 
   .card {
     padding: 24px;
-    box-shadow: none;
-    border: none;
-    background: transparent;
-  }
-
-  .inputWrap {
-    background: #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   }
 
   .logoBox {
     width: 70px;
     height: 70px;
     font-size: 28px;
+  }
+
+  .form {
+    gap: 16px;
+  }
+
+  .submit {
+    padding: 14px;
+    font-size: 15px;
   }
 }

@@ -327,6 +327,51 @@ export async function checkAvailability(
   });
 }
 
+// ฟังก์ชันอัพเดท Stock
+export interface UpdateStockResponse {
+  _id: string;
+  warehouseId: string;
+  itemId: string;
+  quantity: number;
+  minAlert: number;
+}
+
+export async function updateStock(
+  warehouseId: string,
+  itemId: string,
+  quantity: number,
+  minAlert?: number
+): Promise<ApiResponse<UpdateStockResponse>> {
+  return apiCall<UpdateStockResponse>('/api/stocks', {
+    method: 'POST',
+    body: JSON.stringify({ warehouseId, itemId, quantity, minAlert }),
+  });
+}
+
+// ฟังก์ชันนำเข้า Inventory หลายรายการ
+ export interface BulkImportInventoryResponse {
+  inserted: number;
+  updated: number;
+  total: number;
+  errors?: string[];
+}
+
+export async function bulkImportInventory(
+  warehouseId: string,
+  items: Array<{
+    name: string;
+    category?: string;
+    quantity: number;
+    unit?: string;
+    minAlert?: number;
+  }>
+): Promise<ApiResponse<BulkImportInventoryResponse>> {
+  return apiCall<BulkImportInventoryResponse>('/api/inventory/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ warehouseId, items }),
+  });
+}
+
 // ==================== Requests API ====================
 
 export interface RequestItem {
@@ -602,28 +647,33 @@ export async function transferRequest(
   });
 }
 
-export async function cancelRequest(requestId: string): Promise<ApiResponse<null>> {
+export async function rejectRequest(
+  requestId: string,
+  reason?: string
+): Promise<ApiResponse<Request>> {
   // Demo Mode: Check if it's a local request first
   if (requestId.startsWith('local_') && typeof window !== 'undefined') {
     const existingRaw = localStorage.getItem('demo_requests');
     if (existingRaw) {
-      let requests: DemoRequest[] = JSON.parse(existingRaw);
-      const initialLength = requests.length;
-      requests = requests.filter(r => r._id !== requestId);
-
-      if (requests.length < initialLength) {
+      const requests = JSON.parse(existingRaw);
+      const targetIndex = requests.findIndex((r: any) => r._id === requestId);
+      if (targetIndex !== -1) {
+        requests[targetIndex].status = 'rejected';
+        requests[targetIndex].rejectionReason = reason || 'ปฏิเสธโดยแอดมิน';
+        requests[targetIndex].updatedAt = new Date().toISOString();
         localStorage.setItem('demo_requests', JSON.stringify(requests));
         return {
           success: true,
-          message: 'ยกเลิกคำร้องเรียบร้อย'
+          data: requests[targetIndex],
+          message: 'ปฏิเสธคำร้องเรียบร้อย'
         };
       }
     }
   }
 
-  // Real API call
-  return apiCall<null>(`/api/requests/${requestId}`, {
-    method: 'DELETE',
+  return apiCall<Request>(`/api/requests/${requestId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
   });
 }
 

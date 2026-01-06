@@ -640,6 +640,36 @@ export async function transferRequest(
   });
 }
 
+export async function rejectRequest(
+  requestId: string,
+  reason?: string
+): Promise<ApiResponse<Request>> {
+  // Demo Mode: Check if it's a local request first
+  if (requestId.startsWith('local_') && typeof window !== 'undefined') {
+    const existingRaw = localStorage.getItem('demo_requests');
+    if (existingRaw) {
+      const requests = JSON.parse(existingRaw);
+      const targetIndex = requests.findIndex((r: any) => r._id === requestId);
+      if (targetIndex !== -1) {
+        requests[targetIndex].status = 'rejected';
+        requests[targetIndex].rejectionReason = reason || 'ปฏิเสธโดยแอดมิน';
+        requests[targetIndex].updatedAt = new Date().toISOString();
+        localStorage.setItem('demo_requests', JSON.stringify(requests));
+        return {
+          success: true,
+          data: requests[targetIndex],
+          message: 'ปฏิเสธคำร้องเรียบร้อย'
+        };
+      }
+    }
+  }
+
+  return apiCall<Request>(`/api/requests/${requestId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
 // ==================== Items API ====================
 
 export interface Item {

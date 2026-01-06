@@ -16,7 +16,7 @@ import styles from './admin.module.css';
 import {
   getDashboardOverview, getShelterStatus, getRequests, getLowStockItems,
   getItems, getUsers, isAuthenticated, getCurrentUser,
-  logout, approveRequest, transferRequest, getShelters, getDistributionTasks,
+  logout, approveRequest, transferRequest, rejectRequest, getShelters, getDistributionTasks,
   getWarehouses, getStockStatus, getRequestDetail, updateStock, bulkImportInventory,
   type DashboardOverview,
   type ShelterStatus, type Request, type User, type Shelter, type StockItem
@@ -190,6 +190,27 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     if (confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
       logout();
+    }
+  };
+
+  // ปฏิเสธคำร้อง
+  const handleReject = async (id: string) => {
+    const reason = prompt('ระบุเหตุผลในการปฏิเสธ (ไม่บังคับ):');
+    if (reason === null) return; // กด Cancel
+
+    if (!confirm('ยืนยันการปฏิเสธคำร้องนี้?')) return;
+
+    try {
+      const result = await rejectRequest(id, reason || 'ปฏิเสธโดยแอดมิน');
+      if (result.success) {
+        alert('❌ ปฏิเสธคำร้องเรียบร้อยแล้ว');
+        fetchInitialData(); // Refresh data
+      } else {
+        alert(result.message || 'เกิดข้อผิดพลาด');
+      }
+    } catch (error) {
+      console.error('Reject error:', error);
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     }
   };
 
@@ -909,6 +930,8 @@ export default function AdminDashboard() {
   const [inventorySearch, setInventorySearch] = useState('');
   const [inventoryCategory, setInventoryCategory] = useState('ทั้งหมด');
   const [inventoryStatus, setInventoryStatus] = useState('สถานะทั้งหมด');
+  const [overviewInventorySearch, setOverviewInventorySearch] = useState('');
+  const [overviewShelterSearch, setOverviewShelterSearch] = useState('');
 
   // Admin Inventory State (Same as User Inventory)
   const [adminInventoryItems, setAdminInventoryItems] = useState<Array<{
@@ -1084,21 +1107,6 @@ export default function AdminDashboard() {
             </div>
             <span className={styles.logoText}>Materially</span>
           </div>
-
-          <div className={styles.searchBar}>
-            <Search size={16} className={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="ค้นหา..."
-              className={styles.searchInput}
-            />
-          </div>
-
-          <div className={styles.headerRight}>
-            <div className={styles.headerBtn}>
-              <Bell size={20} />
-            </div>
-          </div>
         </header>
 
         {/* Content Area */}
@@ -1207,6 +1215,25 @@ export default function AdminDashboard() {
                               <Edit3 size={12} />
                             </button>
                             <button
+                              onClick={() => handleReject(req._id)}
+                              style={{ 
+                                padding: '6px 14px', 
+                                fontSize: '12px',
+                                backgroundColor: '#fff5f5',
+                                color: '#fa5252',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="ปฏิเสธคำร้อง"
+                            >
+                              <XCircle size={14} /> ปฏิเสธ
+                            </button>
+                            <button
                               onClick={() => handleApprove(req._id)}
                               className={styles.approveBtn}
                             >
@@ -1215,79 +1242,6 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Distribution Tracking */}
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h3 className={styles.chartTitle}>ติดตามการกระจายของ</h3>
-                      <button onClick={() => setActiveTab('distribution')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {distributionTasks.map(task => (
-                        <div key={task.id} className={styles.distributionItem}>
-                          <div className={styles.statusDot} style={{
-                            backgroundColor: task.status === 'delivered' ? '#40c057' : task.status === 'shipping' ? '#339af0' : '#fab005'
-                          }}></div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14px', fontWeight: '600' }}>{task.items}</div>
-                            <div style={{ fontSize: '12px', color: '#868e96' }}>→ {task.shelter}</div>
-                          </div>
-                          <div style={{ fontSize: '12px', fontWeight: '500', color: '#495057' }}>{task.time}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* System Notifications */}
-                  <div className={styles.chartCard}>
-                    <div className={styles.chartHeader}>
-                      <h3 className={styles.chartTitle}>การแจ้งเตือนระบบ</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {notifications.map(notif => (
-                        <div key={notif.id} className={styles.notificationItem}>
-                          <div className={styles.notifIcon} style={{
-                            backgroundColor: notif.type === 'critical' ? '#fff5f5' : notif.type === 'request' ? '#e7f5ff' : '#fff9db'
-                          }}>
-                            {notif.type === 'critical' ? <AlertCircle size={18} color="#fa5252" /> :
-                              notif.type === 'request' ? <FileText size={18} color="#228be6" /> :
-                                <Package size={18} color="#f08c00" />}
-                          </div>
-                          <div className={styles.notifContent}>
-                            <div className={styles.notifMsg}>{notif.msg}</div>
-                            <div className={styles.notifTime}>{notif.time}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Stock Status Central */}
-                  <div className={styles.chartCard} style={{ gridColumn: sidebarOpen ? 'span 2' : 'span 1' }}>
-                    <h3 className={styles.chartTitle} style={{ marginBottom: '20px' }}>สถานะคลังสินค้ากองกลาง</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                      {lowStockItems.length > 0 ? (
-                        lowStockItems.slice(0, 4).map((stock) => (
-                          <div key={stock._id}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                              <span style={{ fontWeight: '500', fontSize: '14px' }}>{stock.itemId?.name || 'Unknown Item'}</span>
-                              <span style={{ fontSize: '14px', color: '#fa5252', fontWeight: 'bold' }}>{stock.quantity} {stock.itemId?.unit || ''}</span>
-                            </div>
-                            <div className={styles.progressBarOuter}>
-                              <div className={styles.progressBarInner} style={{
-                                width: `${Math.min((stock.quantity / (stock.minAlert || 1)) * 100, 100)}%`,
-                                backgroundColor: '#fa5252'
-                              }}></div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ gridColumn: 'span 2', textAlign: 'center', color: '#868e96', padding: '20px' }}>
-                          ไม่มีรายการสินค้าที่ต้องเติมเร่งด่วน
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -1347,6 +1301,301 @@ export default function AdminDashboard() {
                         ปกติ ({shelterStats.normal})
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Overview Section: Shelters, Inventory, Approval History */}
+                <div className={styles.chartsGrid} style={{ marginTop: '16px' }}>
+                  {/* Shelter Overview */}
+                  <div className={styles.chartCard}>
+                    <div className={styles.chartHeader}>
+                      <h3 className={styles.chartTitle}>ภาพรวมศูนย์พักพิง</h3>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => setExcelModalOpen(true)} 
+                          style={{ 
+                            width: 'auto', 
+                            fontSize: '12px', 
+                            padding: '6px 12px',
+                            backgroundColor: '#40c057',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          <FileSpreadsheet size={14} /> นำเข้า Excel
+                        </button>
+                        <button onClick={() => setActiveTab('shelters')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
+                      </div>
+                    </div>
+                    {/* Search Input */}
+                    <div style={{ position: 'relative', marginBottom: '12px' }}>
+                      <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#adb5bd' }} />
+                      <input
+                        type="text"
+                        placeholder="ค้นหาศูนย์พักพิง..."
+                        value={overviewShelterSearch}
+                        onChange={(e) => setOverviewShelterSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 40px',
+                          border: '1px solid #e1e4e8',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto' }}>
+                      {shelters
+                        .filter((shelter: any) => 
+                          shelter.name.toLowerCase().includes(overviewShelterSearch.toLowerCase()) || 
+                          shelter.province?.toLowerCase().includes(overviewShelterSearch.toLowerCase())
+                        )
+                        .slice(0, 10).map((shelter: any) => {
+                        const statusColor = shelter.status === 'full' ? '#fa5252' : shelter.status === 'nearly_full' ? '#fab005' : '#40c057';
+                        
+                        return (
+                          <div key={shelter._id} className={styles.requestItem} style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                              <div style={{ 
+                                width: '36px', 
+                                height: '36px', 
+                                borderRadius: '8px', 
+                                backgroundColor: `${statusColor}15`, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center' 
+                              }}>
+                                <Home size={18} style={{ color: statusColor }} />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{shelter.name}</div>
+                                <div style={{ fontSize: '11px', color: '#868e96' }}>{shelter.province || 'ไม่ระบุจังหวัด'}</div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: '700', fontSize: '14px', color: statusColor }}>{shelter.currentPeople}/{shelter.capacity}</div>
+                                <div style={{ fontSize: '11px', color: '#868e96' }}>คน</div>
+                              </div>
+                              <span className={`${styles.statusBadge} ${shelter.status === 'full' ? styles.badgeCritical : shelter.status === 'nearly_full' ? styles.badgeWarning : styles.badgeNormal}`} style={{ minWidth: '55px', justifyContent: 'center' }}>
+                                {shelter.status === 'full' ? 'เต็ม' : shelter.status === 'nearly_full' ? 'ใกล้เต็ม' : 'ปกติ'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {shelters.length === 0 && (
+                        <div style={{ textAlign: 'center', color: '#868e96', padding: '20px' }}>ไม่มีข้อมูลศูนย์พักพิง</div>
+                      )}
+                      {shelters.filter((s: any) => s.name.toLowerCase().includes(overviewShelterSearch.toLowerCase()) || s.province?.toLowerCase().includes(overviewShelterSearch.toLowerCase())).length > 10 && (
+                        <div style={{ textAlign: 'center', padding: '8px' }}>
+                          <button 
+                            onClick={() => setActiveTab('shelters')} 
+                            style={{ 
+                              color: '#4361ee', 
+                              background: 'none', 
+                              border: 'none', 
+                              cursor: 'pointer', 
+                              fontSize: '13px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            ดูทั้งหมด ({shelters.length} ศูนย์) →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Inventory Overview */}
+                  <div className={styles.chartCard}>
+                    <div className={styles.chartHeader}>
+                      <h3 className={styles.chartTitle}>ภาพรวมคลังสิ่งของ</h3>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => setInventoryExcelModalOpen(true)} 
+                          style={{ 
+                            width: 'auto', 
+                            fontSize: '12px', 
+                            padding: '6px 12px',
+                            backgroundColor: '#40c057',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          <FileSpreadsheet size={14} /> นำเข้า Excel
+                        </button>
+                        <button onClick={() => setActiveTab('inventory')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
+                      </div>
+                    </div>
+                    {/* Search Input */}
+                    <div style={{ position: 'relative', marginBottom: '12px' }}>
+                      <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#adb5bd' }} />
+                      <input
+                        type="text"
+                        placeholder="ค้นหาสิ่งของ..."
+                        value={overviewInventorySearch}
+                        onChange={(e) => setOverviewInventorySearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 40px',
+                          border: '1px solid #e1e4e8',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto' }}>
+                      {adminInventoryItems
+                        .filter(item => item.name.toLowerCase().includes(overviewInventorySearch.toLowerCase()) || item.categoryLabel.toLowerCase().includes(overviewInventorySearch.toLowerCase()))
+                        .slice(0, 10).map((item) => {
+                        const percentage = (item.quantity / item.maxQuantity) * 100;
+                        const status = item.quantity === 0 ? 'หมด' : percentage <= 30 ? 'ใกล้หมด' : 'มี';
+                        const statusColor = item.quantity === 0 ? '#fa5252' : percentage <= 30 ? '#fab005' : '#40c057';
+                        
+                        return (
+                          <div key={item.id} className={styles.requestItem} style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                              <div style={{ 
+                                width: '36px', 
+                                height: '36px', 
+                                borderRadius: '8px', 
+                                backgroundColor: `${statusColor}15`, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center' 
+                              }}>
+                                <Package size={18} style={{ color: statusColor }} />
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{item.name}</div>
+                                <div style={{ fontSize: '11px', color: '#868e96' }}>{item.categoryLabel}</div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: '700', fontSize: '14px', color: statusColor }}>{item.quantity.toLocaleString()}</div>
+                                <div style={{ fontSize: '11px', color: '#868e96' }}>{item.unit}</div>
+                              </div>
+                              <span className={`${styles.statusBadge} ${status === 'หมด' ? styles.badgeCritical : status === 'ใกล้หมด' ? styles.badgeWarning : styles.badgeNormal}`} style={{ minWidth: '55px', justifyContent: 'center' }}>
+                                {status}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setSelectedItem({ id: item.id, name: item.name, quantity: item.quantity, unit: item.unit });
+                                  setAddQuantity(0);
+                                  setAddStockModalOpen(true);
+                                }}
+                                style={{
+                                  padding: '6px 10px',
+                                  backgroundColor: '#4361ee',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                                title="เพิ่มจำนวน"
+                              >
+                                + เพิ่ม
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {adminInventoryItems.length === 0 && (
+                        <div style={{ textAlign: 'center', color: '#868e96', padding: '20px' }}>กำลังโหลดข้อมูลคลัง...</div>
+                      )}
+                      {adminInventoryItems.length > 10 && (
+                        <div style={{ textAlign: 'center', padding: '8px' }}>
+                          <button 
+                            onClick={() => setActiveTab('inventory')} 
+                            style={{ 
+                              color: '#4361ee', 
+                              background: 'none', 
+                              border: 'none', 
+                              cursor: 'pointer', 
+                              fontSize: '13px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            ดูทั้งหมด ({adminInventoryItems.length} รายการ) →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Approval History Overview */}
+                <div className={styles.chartCard} style={{ marginTop: '16px' }}>
+                  <div className={styles.chartHeader}>
+                    <h3 className={styles.chartTitle}>ประวัติการอนุมัติล่าสุด</h3>
+                    <button onClick={() => setActiveTab('logs')} className={styles.navItem} style={{ width: 'auto', fontSize: '12px', padding: '4px 12px' }}>ดูทั้งหมด</button>
+                  </div>
+                  <div className={styles.tableContainer}>
+                    <table className={styles.customTable}>
+                      <thead>
+                        <tr>
+                          <th>ศูนย์พักพิง</th>
+                          <th>รายการ</th>
+                          <th>สถานะ</th>
+                          <th>วันที่อนุมัติ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {approvedRequests.slice(0, 5).map((req) => (
+                          <tr key={req._id}>
+                            <td style={{ fontWeight: '600' }}>
+                              {typeof req.shelterId === 'object' ? req.shelterId.name : req.shelterId || 'Unknown'}
+                            </td>
+                            <td>
+                              {req.items.slice(0, 2).map(i => i.itemId?.name || 'Unknown').join(', ')}
+                              {req.items.length > 2 && ` +${req.items.length - 2} รายการ`}
+                            </td>
+                            <td>
+                              <span className={`${styles.statusBadge} ${req.status === 'transferred' ? styles.badgeNormal : styles.badgeWarning}`}>
+                                {req.status === 'transferred' ? 'โอนแล้ว' : req.status === 'approved' ? 'อนุมัติแล้ว' : req.status}
+                              </span>
+                            </td>
+                            <td style={{ color: '#868e96', fontSize: '13px' }}>
+                              {new Date(req.updatedAt || req.createdAt).toLocaleDateString('th-TH', { 
+                                day: '2-digit', 
+                                month: 'short', 
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                        {approvedRequests.length === 0 && (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: 'center', color: '#868e96', padding: '20px' }}>
+                              ยังไม่มีประวัติการอนุมัติ
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </>
@@ -2159,6 +2408,25 @@ export default function AdminDashboard() {
                                   title="แก้ไขจำนวน"
                                 >
                                   <Edit3 size={14} /> แก้ไข
+                                </button>
+                                <button
+                                  onClick={() => handleReject(req._id)}
+                                  style={{ 
+                                    padding: '6px 12px', 
+                                    fontSize: '13px',
+                                    backgroundColor: '#fff5f5',
+                                    color: '#fa5252',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="ปฏิเสธคำร้อง"
+                                >
+                                  <XCircle size={14} /> ปฏิเสธ
                                 </button>
                                 <button
                                   onClick={() => handleApprove(req._id)}

@@ -4,22 +4,24 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/AppLayout';
 import styles from './requests.module.css';
-import { getCurrentUser, isAuthenticated } from '@/lib/api';
+import { getCurrentUser, isAuthenticated, getRequests, cancelRequest, type Request as ApiRequest } from '@/lib/api';
 
-// Mock data - ในอนาคตจะดึงจาก API
-interface Request {
+// Frontend Display Interface
+interface RequestDisplay {
     id: string;
     itemName: string;
-    quantity: number;
+    quantity: number; // Just for display, might be sum or representative
     unit: string;
     urgency: 'ทั่วไป' | 'ปกติ' | 'ด่วน';
     status: 'pending' | 'approved' | 'rejected' | 'delivered';
     shelterName: string;
     requestDate: string;
     note?: string;
+    rawRequest?: ApiRequest | any; // Keep original for cancel
 }
 
-const mockRequests: Request[] = [
+// Mock data as fallback
+const mockRequests: RequestDisplay[] = [
     {
         id: 'REQ-001',
         itemName: 'น้ำดื่ม',
@@ -31,55 +33,25 @@ const mockRequests: Request[] = [
         requestDate: '2024-12-31T10:30:00',
         note: 'ต้องการภายในวันนี้'
     },
-    {
-        id: 'REQ-002',
-        itemName: 'ข้าวสาร',
-        quantity: 50,
-        unit: 'กก.',
-        urgency: 'ปกติ',
-        status: 'pending',
-        shelterName: 'ศูนย์พักพิงแจ้งวัฒนะ',
-        requestDate: '2024-12-31T14:15:00'
-    },
-    {
-        id: 'REQ-003',
-        itemName: 'ผ้าห่ม',
-        quantity: 30,
-        unit: 'ผืน',
-        urgency: 'ทั่วไป',
-        status: 'delivered',
-        shelterName: 'ศูนย์พักพิงสีลม',
-        requestDate: '2024-12-30T09:00:00',
-        note: 'สำหรับผู้สูงอายุ'
-    },
-    {
-        id: 'REQ-004',
-        itemName: 'ยาพาราเซตามอล',
-        quantity: 100,
-        unit: 'เม็ด',
-        urgency: 'ด่วน',
-        status: 'rejected',
-        shelterName: 'ศูนย์พักพิงอุบล',
-        requestDate: '2024-12-30T16:45:00',
-        note: 'สต็อกไม่เพียงพอ'
-    }
 ];
 
-const STATUS_LABELS = {
+const STATUS_LABELS: Record<string, string> = {
     pending: 'รอดำเนินการ',
     approved: 'อนุมัติแล้ว',
     rejected: 'ปฏิเสธ',
-    delivered: 'ส่งมอบแล้ว'
+    delivered: 'ส่งมอบแล้ว',
+    transferred: 'โอนย้ายแล้ว'
 };
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, string> = {
     pending: '#f59e0b',
     approved: '#22c55e',
     rejected: '#ef4444',
-    delivered: '#06b6d4'
+    delivered: '#06b6d4',
+    transferred: '#8b5cf6'
 };
 
-const URGENCY_COLORS = {
+const URGENCY_COLORS: Record<string, string> = {
     'ทั่วไป': '#06b6d4',
     'ปกติ': '#f59e0b',
     'ด่วน': '#ef4444'
@@ -88,7 +60,7 @@ const URGENCY_COLORS = {
 export default function RequestsPage() {
     const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
-    const [requests, setRequests] = useState<Request[]>([]);
+    const [requests, setRequests] = useState<RequestDisplay[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'delivered'>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -100,38 +72,97 @@ export default function RequestsPage() {
     useEffect(() => {
         if (!isMounted) return;
 
-        // Check authentication
         if (!isAuthenticated()) {
             router.replace('/login');
             return;
         }
 
-        // Load requests data
         loadRequests();
     }, [router, isMounted]);
 
     const loadRequests = async () => {
         setLoading(true);
         try {
-            // Read from localStorage
-            const userRequests = JSON.parse(localStorage.getItem('user_requests') || '[]');
+            const result = await getRequests();
+            if (result.success && result.data) {
+                // Transform API requests to Display format
+                const mappedRequests: RequestDisplay[] = result.data.map((req: any) => {
+                    // Handle Items (could be multiple)
+                    const items = req.items || [];
+                    let itemName = "ไม่ระบุรายการ";
+                    let quantity = 0;
+                    let unit = "";
 
-            // Combine with mock data (mock data for demonstration)
-            const allRequests = [...userRequests, ...mockRequests];
+                    if (items.length > 0) {
+                        const firstItem = items[0];
+                        // Check nesting structure (demo vs api might differ slightly)
+                        const name = firstItem.itemId?.name || firstItem.itemId?.itemName || "Item";
+                        const qty = firstItem.quantityRequested || 0;
+                        const u = firstItem.itemId?.unit || "หน่วย";
 
-            setRequests(allRequests);
+                        if (items.length > 1) {
+                            itemName = `${name} และอีก ${items.length - 1} รายการ`;
+                        } else {
+                            itemName = name;
+                        }
+                        quantity = qty;
+                        unit = u;
+                    }
+
+                    // Handle Shelter Name
+                    let shelterName = "ไม่ระบุศูนย์";
+                    if (typeof req.shelterId === 'string') shelterName = req.shelterId;
+                    else if (req.shelterId?.name) shelterName = req.shelterId.name;
+
+                    // Urgency (Mock logic based on keywords or random if not present)
+                    // API doesn't have urgency field yet, let's infer or default
+                    let urgency: 'ทั่วไป' | 'ปกติ' | 'ด่วน' = 'ปกติ';
+                    if (req.reason && (req.reason.includes('ด่วน') || req.reason.includes('urgent'))) urgency = 'ด่วน';
+
+                    return {
+                        id: req._id,
+                        itemName,
+                        quantity,
+                        unit,
+                        urgency,
+                        status: req.status || 'pending',
+                        shelterName,
+                        requestDate: req.createdAt,
+                        note: req.reason,
+                        rawRequest: req
+                    };
+                });
+
+                setRequests(mappedRequests);
+            } else {
+                setRequests(mockRequests);
+            }
         } catch (err) {
             console.error('Error loading requests:', err);
-            // Fallback to mock data if localStorage fails
             setRequests(mockRequests);
         } finally {
             setLoading(false);
         }
     };
 
-    if (!isMounted) {
-        return null;
-    }
+    const handleCancel = async (requestId: string) => {
+        if (!confirm('ยืนยันที่จะยกเลิกคำร้องขอนี้?')) return;
+
+        try {
+            const result = await cancelRequest(requestId);
+            if (result.success) {
+                alert('ยกเลิกคำร้องเรียบร้อย');
+                loadRequests(); // Reload
+            } else {
+                alert('ไม่สามารถยกเลิกได้: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Cancel error:', error);
+            alert('เกิดข้อผิดพลาดในการยกเลิก');
+        }
+    };
+
+    if (!isMounted) return null;
 
     if (loading) {
         return (
@@ -154,9 +185,10 @@ export default function RequestsPage() {
 
     const filteredRequests = requests.filter(req => {
         const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
-        const matchesSearch = req.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            req.shelterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            req.id.toLowerCase().includes(searchQuery.toLowerCase());
+        // Safe check for properties
+        const matchesSearch = (req.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (req.shelterName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (req.id || '').toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
     });
 
@@ -168,14 +200,19 @@ export default function RequestsPage() {
     };
 
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat('th-TH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(date);
+        if (!dateString) return "-";
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('th-TH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        } catch (e) {
+            return dateString;
+        }
     };
 
     return (
@@ -236,12 +273,6 @@ export default function RequestsPage() {
                         >
                             ส่งมอบแล้ว
                         </button>
-                        <button
-                            className={statusFilter === 'rejected' ? styles.typeButtonActive : styles.typeButton}
-                            onClick={() => setStatusFilter('rejected')}
-                        >
-                            ปฏิเสธ
-                        </button>
                     </div>
 
                     <div className={styles.searchBox}>
@@ -264,7 +295,9 @@ export default function RequestsPage() {
                     {filteredRequests.map(request => (
                         <div key={request.id} className={styles.requestCard}>
                             <div className={styles.requestHeader}>
-                                <div className={styles.requestId}>{request.id}</div>
+                                <div className={styles.requestId}>
+                                    {request.id.startsWith('local_') ? 'DEMO-REQ' : request.id.substring(0, 8).toUpperCase()}
+                                </div>
                                 <div className={styles.requestDate}>{formatDate(request.requestDate)}</div>
                             </div>
 
@@ -273,8 +306,8 @@ export default function RequestsPage() {
                                     <h3 className={styles.itemName}>{request.itemName}</h3>
                                     <div className={styles.requestDetails}>
                                         <div className={styles.detailItem}>
-                                            <span className={styles.detailLabel}>จำนวน:</span>
-                                            <span className={styles.detailValue}>{request.quantity} {request.unit}</span>
+                                            <span className={styles.detailLabel}>จำนวนรวม:</span>
+                                            <span className={styles.detailValue}>{request.quantity} ชิ้น/รายการ</span>
                                         </div>
                                         <div className={styles.detailItem}>
                                             <span className={styles.detailLabel}>ศูนย์พักพิง:</span>
@@ -288,27 +321,37 @@ export default function RequestsPage() {
                                     )}
                                 </div>
 
-                                <div className={styles.requestBadges}>
-                                    <div
-                                        className={styles.statusBadge}
-                                        style={{
-                                            background: `${STATUS_COLORS[request.status]}15`,
-                                            color: STATUS_COLORS[request.status],
-                                            border: `1px solid ${STATUS_COLORS[request.status]}30`
-                                        }}
-                                    >
-                                        {STATUS_LABELS[request.status]}
+                                <div className={styles.requestBadges} style={{ flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div
+                                            className={styles.statusBadge}
+                                            style={{
+                                                background: `${STATUS_COLORS[request.status] || '#999'}15`,
+                                                color: STATUS_COLORS[request.status] || '#999',
+                                                border: `1px solid ${STATUS_COLORS[request.status] || '#999'}30`
+                                            }}
+                                        >
+                                            {STATUS_LABELS[request.status] || request.status}
+                                        </div>
                                     </div>
-                                    <div
-                                        className={styles.urgencyBadge}
-                                        style={{
-                                            background: `${URGENCY_COLORS[request.urgency]}15`,
-                                            color: URGENCY_COLORS[request.urgency],
-                                            border: `1px solid ${URGENCY_COLORS[request.urgency]}30`
-                                        }}
-                                    >
-                                        {request.urgency}
-                                    </div>
+
+                                    {request.status === 'pending' && (
+                                        <button
+                                            onClick={() => handleCancel(request.id)}
+                                            style={{
+                                                padding: '6px 12px',
+                                                fontSize: '13px',
+                                                color: '#ef4444',
+                                                background: '#fff',
+                                                border: '1px solid #ef4444',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                marginTop: '8px'
+                                            }}
+                                        >
+                                            ยกเลิกคำร้อง
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

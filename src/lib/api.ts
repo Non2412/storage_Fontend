@@ -602,6 +602,31 @@ export async function transferRequest(
   });
 }
 
+export async function cancelRequest(requestId: string): Promise<ApiResponse<null>> {
+  // Demo Mode: Check if it's a local request first
+  if (requestId.startsWith('local_') && typeof window !== 'undefined') {
+    const existingRaw = localStorage.getItem('demo_requests');
+    if (existingRaw) {
+      let requests: DemoRequest[] = JSON.parse(existingRaw);
+      const initialLength = requests.length;
+      requests = requests.filter(r => r._id !== requestId);
+
+      if (requests.length < initialLength) {
+        localStorage.setItem('demo_requests', JSON.stringify(requests));
+        return {
+          success: true,
+          message: 'ยกเลิกคำร้องเรียบร้อย'
+        };
+      }
+    }
+  }
+
+  // Real API call
+  return apiCall<null>(`/api/requests/${requestId}`, {
+    method: 'DELETE',
+  });
+}
+
 // ==================== Items API ====================
 
 export interface Item {

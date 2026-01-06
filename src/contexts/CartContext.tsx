@@ -82,7 +82,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
 
     const getTotalItems = () => {
-        return cart.reduce((total, item) => total + item.quantity, 0);
+        return cart.length;
     };
 
     return (

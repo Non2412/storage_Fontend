@@ -320,6 +320,51 @@ export async function checkAvailability(
   });
 }
 
+// ฟังก์ชันอัพเดท Stock
+export interface UpdateStockResponse {
+  _id: string;
+  warehouseId: string;
+  itemId: string;
+  quantity: number;
+  minAlert: number;
+}
+
+export async function updateStock(
+  warehouseId: string,
+  itemId: string,
+  quantity: number,
+  minAlert?: number
+): Promise<ApiResponse<UpdateStockResponse>> {
+  return apiCall<UpdateStockResponse>('/api/stocks', {
+    method: 'POST',
+    body: JSON.stringify({ warehouseId, itemId, quantity, minAlert }),
+  });
+}
+
+// ฟังก์ชันนำเข้า Inventory หลายรายการ
+ export interface BulkImportInventoryResponse {
+  inserted: number;
+  updated: number;
+  total: number;
+  errors?: string[];
+}
+
+export async function bulkImportInventory(
+  warehouseId: string,
+  items: Array<{
+    name: string;
+    category?: string;
+    quantity: number;
+    unit?: string;
+    minAlert?: number;
+  }>
+): Promise<ApiResponse<BulkImportInventoryResponse>> {
+  return apiCall<BulkImportInventoryResponse>('/api/inventory/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ warehouseId, items }),
+  });
+}
+
 // ==================== Requests API ====================
 
 export interface RequestItem {

@@ -17,7 +17,7 @@ import {
   getDashboardOverview, getShelterStatus, getRequests, getLowStockItems,
   getItems, getUsers, isAuthenticated, getCurrentUser,
   logout, approveRequest, transferRequest, getShelters, getDistributionTasks,
-  getWarehouses, getStockStatus, getRequestDetail,
+  getWarehouses, getStockStatus, getRequestDetail, updateStock, bulkImportInventory,
   type DashboardOverview,
   type ShelterStatus, type Request, type User, type Shelter, type StockItem
 } from '@/lib/api';
@@ -45,11 +45,23 @@ export default function AdminDashboard() {
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [editedQuantities, setEditedQuantities] = useState<{[itemId: string]: number}>({});
 
-  // Excel Upload Modal State
+  // Excel Upload Modal State (Shelters)
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [excelData, setExcelData] = useState<any[]>([]);
   const [excelFileName, setExcelFileName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  // Excel Upload Modal State (Inventory)
+  const [inventoryExcelModalOpen, setInventoryExcelModalOpen] = useState(false);
+  const [inventoryExcelData, setInventoryExcelData] = useState<any[]>([]);
+  const [inventoryExcelFileName, setInventoryExcelFileName] = useState('');
+  const [isUploadingInventory, setIsUploadingInventory] = useState(false);
+
+  // Add Stock Modal State
+  const [addStockModalOpen, setAddStockModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{id: string; name: string; quantity: number; unit: string} | null>(null);
+  const [addQuantity, setAddQuantity] = useState(0);
+  const [isAddingStock, setIsAddingStock] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -585,6 +597,169 @@ export default function AdminDashboard() {
     XLSX.writeFile(workbook, fileName);
   };
 
+  // ฟังก์ชัน Handle Excel Upload สำหรับคลังสิ่งของ
+  const handleInventoryExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setInventoryExcelFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      // แปลงชื่อคอลัมน์ภาษาไทยเป็น key
+      const mappedData = data.map((row: any) => ({
+        name: row['ชื่อสิ่งของ'] || row['name'] || '',
+        category: row['หมวดหมู่'] || row['category'] || 'other',
+        quantity: parseInt(row['จำนวน'] || row['quantity'] || 0),
+        unit: row['หน่วย'] || row['unit'] || 'ชิ้น',
+        minAlert: parseInt(row['แจ้งเตือนเมื่อต่ำกว่า'] || row['minAlert'] || 10)
+      }));
+
+      setInventoryExcelData(mappedData);
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  // ฟังก์ชัน Submit ข้อมูลสิ่งของจาก Excel ไป API
+  const handleInventoryExcelSubmit = async () => {
+    if (inventoryExcelData.length === 0) {
+      alert('ไม่มีข้อมูลที่จะนำเข้า');
+      return;
+    }
+
+    setIsUploadingInventory(true);
+
+    try {
+      // ดึง warehouseId แรก (หรือให้เลือกได้)
+      const warehousesResult = await getWarehouses();
+      if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
+        throw new Error('ไม่พบคลังสินค้าในระบบ');
+      }
+      const warehouseId = warehousesResult.data[0]._id;
+
+      // เรียก API bulk ผ่าน proxy
+      const result = await bulkImportInventory(warehouseId, inventoryExcelData);
+
+      if (result.success) {
+        const data = result.data;
+        alert(`นำเข้าสำเร็จ ${data?.inserted || 0} รายการใหม่, อัพเดท ${data?.updated || 0} รายการ`);
+        setInventoryExcelModalOpen(false);
+        setInventoryExcelData([]);
+        setInventoryExcelFileName('');
+        // รีโหลดข้อมูล inventory
+        await loadAdminInventory();
+      } else {
+        throw new Error(result.message || 'เกิดข้อผิดพลาด');
+      }
+    } catch (error: any) {
+      alert('เกิดข้อผิดพลาด: ' + error.message);
+    } finally {
+      setIsUploadingInventory(false);
+    }
+  };
+
+  // ฟังก์ชันเพิ่มจำนวนของในคลัง
+  const handleAddStock = async () => {
+    if (!selectedItem || addQuantity <= 0) {
+      alert('กรุณาระบุจำนวนที่ต้องการเพิ่ม');
+      return;
+    }
+
+    setIsAddingStock(true);
+
+    try {
+      // ดึง warehouseId แรก
+      const warehousesResult = await getWarehouses();
+      if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
+        throw new Error('ไม่พบคลังสินค้าในระบบ');
+      }
+      const warehouseId = warehousesResult.data[0]._id;
+
+      // ดึง stock จริงของ warehouse นี้ก่อน
+      const stockResult = await getStockStatus(warehouseId);
+      let currentStockInWarehouse = 0;
+      
+      if (stockResult.success && stockResult.data?.items) {
+        const stockItem = stockResult.data.items.find(
+          (s: any) => s.itemId === selectedItem.id || s.itemId?._id === selectedItem.id
+        );
+        if (stockItem) {
+          currentStockInWarehouse = stockItem.quantity || 0;
+        }
+      }
+
+      // เรียก API เพิ่ม stock ผ่าน proxy (บวกจาก stock จริงของ warehouse นี้)
+      const result = await updateStock(
+        warehouseId,
+        selectedItem.id,
+        currentStockInWarehouse + addQuantity
+      );
+
+      if (result.success) {
+        alert(`เพิ่มจำนวน ${selectedItem.name} สำเร็จ (+${addQuantity} ${selectedItem.unit})`);
+        setAddStockModalOpen(false);
+        setSelectedItem(null);
+        setAddQuantity(0);
+        // รีโหลดข้อมูล inventory ใหม่ (ไม่ reload หน้า)
+        await loadAdminInventory();
+      } else {
+        throw new Error(result.message || 'เกิดข้อผิดพลาด');
+      }
+    } catch (error: any) {
+      alert('เกิดข้อผิดพลาด: ' + error.message);
+    } finally {
+      setIsAddingStock(false);
+    }
+  };
+
+  // ฟังก์ชัน Export ข้อมูลคลังสิ่งของเป็น Excel
+  const handleExportInventoryExcel = () => {
+    if (adminInventoryItems.length === 0) {
+      alert('ไม่มีข้อมูลที่จะส่งออก');
+      return;
+    }
+
+    // แปลงข้อมูลเป็นรูปแบบที่ต้องการ
+    const exportData = adminInventoryItems.map((item, index) => ({
+      'ลำดับ': index + 1,
+      'ชื่อสิ่งของ': item.name || '',
+      'หมวดหมู่': item.categoryLabel || '',
+      'จำนวน': item.quantity || 0,
+      'จำนวนสูงสุด': item.maxQuantity || 0,
+      'หน่วย': item.unit || '',
+      'เปอร์เซ็นต์': Math.round((item.quantity / item.maxQuantity) * 100) + '%',
+      'สถานะ': item.quantity === 0 ? 'หมด' : (item.quantity / item.maxQuantity) * 100 <= 30 ? 'ใกล้หมด' : 'มี'
+    }));
+
+    // สร้าง workbook และ worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'คลังสิ่งของ');
+
+    // ปรับความกว้างคอลัมน์
+    const colWidths = [
+      { wch: 6 },   // ลำดับ
+      { wch: 25 },  // ชื่อสิ่งของ
+      { wch: 20 },  // หมวดหมู่
+      { wch: 10 },  // จำนวน
+      { wch: 12 },  // จำนวนสูงสุด
+      { wch: 10 },  // หน่วย
+      { wch: 10 },  // เปอร์เซ็นต์
+      { wch: 10 },  // สถานะ
+    ];
+    worksheet['!cols'] = colWidths;
+
+    // ดาวน์โหลดไฟล์
+    const fileName = `คลังสิ่งของ_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   // ข้อมูลจำลองสำหรับคลังสินค้า (ยังไม่มี API คลังโดยตรง)
   const provincesStock = [
     { name: 'คลังกลาง (กรุงเทพฯ)', items: 5400, status: 'ปกติ' },
@@ -745,71 +920,71 @@ export default function AdminDashboard() {
     unit: string;
   }>>([]);
 
-  // Load Admin Inventory Data (Same logic as User Inventory)
-  useEffect(() => {
-    if (!isMounted) return;
+  // Load Admin Inventory Function
+  const loadAdminInventory = async () => {
+    try {
+      const warehousesResult = await getWarehouses();
 
-    const loadAdminInventory = async () => {
-      try {
-        const warehousesResult = await getWarehouses();
+      if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
+        return;
+      }
 
-        if (!warehousesResult.success || !warehousesResult.data || warehousesResult.data.length === 0) {
-          return;
-        }
+      const allStockItems: Map<string, { itemName: string; totalQuantity: number; maxQuantity: number; unit: string }> = new Map();
 
-        const allStockItems: Map<string, { itemName: string; totalQuantity: number; maxQuantity: number; unit: string }> = new Map();
+      for (const warehouse of warehousesResult.data) {
+        const stockResult = await getStockStatus(warehouse._id);
 
-        for (const warehouse of warehousesResult.data) {
-          const stockResult = await getStockStatus(warehouse._id);
-
-          if (stockResult.success && stockResult.data && stockResult.data.items) {
-            for (const stockItem of stockResult.data.items) {
-              const existing = allStockItems.get(stockItem.itemId);
-              if (existing) {
-                existing.totalQuantity += stockItem.quantity;
-                existing.maxQuantity += stockItem.minAlert * 3;
-              } else {
-                allStockItems.set(stockItem.itemId, {
-                  itemName: stockItem.itemName,
-                  totalQuantity: stockItem.quantity,
-                  maxQuantity: stockItem.minAlert * 3,
-                  unit: stockItem.unit
-                });
-              }
+        if (stockResult.success && stockResult.data && stockResult.data.items) {
+          for (const stockItem of stockResult.data.items) {
+            const existing = allStockItems.get(stockItem.itemId);
+            if (existing) {
+              existing.totalQuantity += stockItem.quantity;
+              existing.maxQuantity += stockItem.minAlert * 3;
+            } else {
+              allStockItems.set(stockItem.itemId, {
+                itemName: stockItem.itemName,
+                totalQuantity: stockItem.quantity,
+                maxQuantity: stockItem.minAlert * 3,
+                unit: stockItem.unit
+              });
             }
           }
         }
-
-        const inventoryItems = Array.from(allStockItems.entries()).map(([itemId, data]) => {
-          const name = data.itemName.toLowerCase();
-          let categoryLabel = 'อุปกรณ์ทั่วไป';
-
-          if (name.includes('ข้าว') || name.includes('นม') || name.includes('อาหาร') || name.includes('rice') || name.includes('food') || name.includes('milk') || name.includes('bread') || name.includes('egg') || name.includes('น้ำ') || name.includes('water')) {
-            categoryLabel = 'อาหารและเครื่องดื่ม';
-          } else if (name.includes('เสื้อ') || name.includes('ผ้า') || name.includes('blanket') || name.includes('shirt') || name.includes('pants') || name.includes('clothing')) {
-            categoryLabel = 'เสื้อผ้าและผ้าห่ม';
-          } else if (name.includes('ยา') || name.includes('พลาส') || name.includes('แอลกอฮอล') || name.includes('medicine') || name.includes('first aid') || name.includes('paracetamol') || name.includes('diarrheal')) {
-            categoryLabel = 'ยาและเวชภัณฑ์';
-          } else if (name.includes('สบู่') || name.includes('แปรง') || name.includes('soap') || name.includes('toothbrush') || name.includes('towel')) {
-            categoryLabel = 'อุปกรณ์สุขอนามัย';
-          }
-
-          return {
-            id: itemId,
-            name: data.itemName,
-            categoryLabel,
-            quantity: data.totalQuantity,
-            maxQuantity: data.maxQuantity,
-            unit: data.unit
-          };
-        });
-
-        setAdminInventoryItems(inventoryItems);
-      } catch (err) {
-        console.error('Error loading admin inventory:', err);
       }
-    };
 
+      const inventoryItems = Array.from(allStockItems.entries()).map(([itemId, data]) => {
+        const name = data.itemName.toLowerCase();
+        let categoryLabel = 'อุปกรณ์ทั่วไป';
+
+        if (name.includes('ข้าว') || name.includes('นม') || name.includes('อาหาร') || name.includes('rice') || name.includes('food') || name.includes('milk') || name.includes('bread') || name.includes('egg') || name.includes('น้ำ') || name.includes('water')) {
+          categoryLabel = 'อาหารและเครื่องดื่ม';
+        } else if (name.includes('เสื้อ') || name.includes('ผ้า') || name.includes('blanket') || name.includes('shirt') || name.includes('pants') || name.includes('clothing')) {
+          categoryLabel = 'เสื้อผ้าและผ้าห่ม';
+        } else if (name.includes('ยา') || name.includes('พลาส') || name.includes('แอลกอฮอล') || name.includes('medicine') || name.includes('first aid') || name.includes('paracetamol') || name.includes('diarrheal')) {
+          categoryLabel = 'ยาและเวชภัณฑ์';
+        } else if (name.includes('สบู่') || name.includes('แปรง') || name.includes('soap') || name.includes('toothbrush') || name.includes('towel')) {
+          categoryLabel = 'อุปกรณ์สุขอนามัย';
+        }
+
+        return {
+          id: itemId,
+          name: data.itemName,
+          categoryLabel,
+          quantity: data.totalQuantity,
+          maxQuantity: data.maxQuantity,
+          unit: data.unit
+        };
+      });
+
+      setAdminInventoryItems(inventoryItems);
+    } catch (err) {
+      console.error('Error loading admin inventory:', err);
+    }
+  };
+
+  // Load Admin Inventory Data on mount
+  useEffect(() => {
+    if (!isMounted) return;
     loadAdminInventory();
   }, [isMounted]);
 
@@ -1426,6 +1601,26 @@ export default function AdminDashboard() {
                   ))}
                 </div>
 
+                {/* Excel Import/Export Buttons */}
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                  <button
+                    onClick={() => setInventoryExcelModalOpen(true)}
+                    className={styles.approveBtn}
+                    style={{ backgroundColor: '#22c55e', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Upload size={18} />
+                    นำเข้าจาก Excel
+                  </button>
+                  <button
+                    onClick={handleExportInventoryExcel}
+                    className={styles.approveBtn}
+                    style={{ backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Download size={18} />
+                    ส่งออก Excel
+                  </button>
+                </div>
+
                 {/* Controls */}
                 <div className={styles.inventoryControls}>
                   <div className={styles.searchWrapper}>
@@ -1473,25 +1668,36 @@ export default function AdminDashboard() {
                         <h3 className={styles.itemTitleDark}>{item.name}</h3>
                         <p className={styles.itemCategoryDark}>{item.categoryLabel}</p>
 
-                        <div className={styles.itemStatsContainer}>
-                          <div>
-                            <span className={styles.itemMainQty}>{item.quantity}</span>
-                            <span className={styles.itemSubQty}> / {item.maxQuantity} {item.unit}</span>
-                          </div>
-                          <div className={styles.itemPercentage}>{Math.round(percentage)}%</div>
+                        <div style={{ marginTop: '16px', marginBottom: '16px' }}>
+                          <span style={{ fontSize: '28px', fontWeight: '700', color: '#495057' }}>{item.quantity}</span>
+                          <span style={{ fontSize: '14px', color: '#868e96', marginLeft: '6px' }}>{item.unit}</span>
                         </div>
 
-                        <div className={styles.inventoryProgressBar}>
-                          <div
-                            className={styles.inventoryProgressFill}
-                            style={{
-                              width: `${Math.min(percentage, 100)}%`,
-                              backgroundColor: status === 'มี' ? '#22c55e' : status === 'ใกล้หมด' ? '#f59e0b' : '#ef4444'
-                            }}
-                          ></div>
-                        </div>
-
-                        <div className={styles.itemFooterStatus}>สถานะ: {status}</div>
+                        <button
+                          onClick={() => {
+                            setSelectedItem({ id: item.id, name: item.name, quantity: item.quantity, unit: item.unit });
+                            setAddQuantity(0);
+                            setAddStockModalOpen(true);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            backgroundColor: '#4361ee',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Package size={16} />
+                          เพิ่มจำนวน
+                        </button>
                       </div>
                     );
                   })}
@@ -2308,6 +2514,268 @@ export default function AdminDashboard() {
                         <>
                           <Check size={16} />
                           นำเข้า {excelData.length} รายการ
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal นำเข้าสิ่งของจาก Excel */}
+            {inventoryExcelModalOpen && (
+              <div className={styles.modalOverlay}>
+                <div className={styles.modalContent} style={{ maxWidth: '900px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div className={styles.modalHeader}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FileSpreadsheet size={20} color="#40c057" />
+                        นำเข้าสิ่งของจาก Excel
+                      </h3>
+                      <p style={{ color: '#868e96', fontSize: '14px', margin: '4px 0 0' }}>
+                        อัพโหลดไฟล์ .xlsx หรือ .xls ที่มีข้อมูลสิ่งของ
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setInventoryExcelModalOpen(false); setInventoryExcelData([]); setInventoryExcelFileName(''); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                    >
+                      <X size={20} color="#868e96" />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+                    {/* Upload Zone */}
+                    <div style={{
+                      border: '2px dashed #dee2e6',
+                      borderRadius: '12px',
+                      padding: '30px',
+                      textAlign: 'center',
+                      backgroundColor: '#f8f9fa',
+                      marginBottom: '20px'
+                    }}>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={handleInventoryExcelUpload}
+                        style={{ display: 'none' }}
+                        id="inventory-excel-upload"
+                      />
+                      <label htmlFor="inventory-excel-upload" style={{ cursor: 'pointer' }}>
+                        <Upload size={48} color="#adb5bd" style={{ marginBottom: '12px' }} />
+                        <p style={{ fontSize: '16px', fontWeight: '500', color: '#495057', margin: '0 0 8px' }}>
+                          คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่
+                        </p>
+                        <p style={{ fontSize: '13px', color: '#868e96', margin: 0 }}>
+                          รองรับไฟล์ .xlsx, .xls
+                        </p>
+                      </label>
+                      {inventoryExcelFileName && (
+                        <div style={{ marginTop: '12px', padding: '8px 16px', backgroundColor: '#e7f5ff', borderRadius: '8px', display: 'inline-block' }}>
+                          <span style={{ color: '#1971c2', fontWeight: '500' }}>📄 {inventoryExcelFileName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* รูปแบบไฟล์ที่รองรับ */}
+                    <div style={{ backgroundColor: '#fff9db', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px' }}>
+                      <p style={{ fontSize: '13px', color: '#e67700', margin: 0, fontWeight: '500' }}>
+                        💡 รูปแบบคอลัมน์ที่รองรับ: ชื่อสิ่งของ, หมวดหมู่, จำนวน, หน่วย, แจ้งเตือนเมื่อต่ำกว่า
+                      </p>
+                    </div>
+
+                    {/* Preview Table */}
+                    {inventoryExcelData.length > 0 && (
+                      <div>
+                        <h4 style={{ margin: '0 0 12px', color: '#495057' }}>
+                          ตัวอย่างข้อมูล ({inventoryExcelData.length} รายการ)
+                        </h4>
+                        <div style={{ overflowX: 'auto', maxHeight: '300px', border: '1px solid #e9ecef', borderRadius: '8px' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                            <thead>
+                              <tr style={{ backgroundColor: '#f8f9fa', position: 'sticky', top: 0 }}>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>#</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>ชื่อสิ่งของ</th>
+                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #e9ecef' }}>หมวดหมู่</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e9ecef' }}>จำนวน</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e9ecef' }}>หน่วย</th>
+                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #e9ecef' }}>แจ้งเตือน</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {inventoryExcelData.slice(0, 10).map((row, idx) => (
+                                <tr key={idx} style={{ borderBottom: '1px solid #f1f3f5' }}>
+                                  <td style={{ padding: '10px', color: '#868e96' }}>{idx + 1}</td>
+                                  <td style={{ padding: '10px', fontWeight: '500' }}>{row.name}</td>
+                                  <td style={{ padding: '10px' }}>{row.category}</td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>{row.quantity}</td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>{row.unit}</td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>{row.minAlert}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {inventoryExcelData.length > 10 && (
+                            <div style={{ padding: '10px', textAlign: 'center', color: '#868e96', backgroundColor: '#f8f9fa' }}>
+                              ... และอีก {inventoryExcelData.length - 10} รายการ
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid #e9ecef', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setInventoryExcelModalOpen(false); setInventoryExcelData([]); setInventoryExcelFileName(''); }}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f8f9fa',
+                        color: '#495057',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleInventoryExcelSubmit}
+                      disabled={inventoryExcelData.length === 0 || isUploadingInventory}
+                      style={{
+                        padding: '10px 24px',
+                        backgroundColor: inventoryExcelData.length === 0 ? '#adb5bd' : '#40c057',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: inventoryExcelData.length === 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {isUploadingInventory ? (
+                        <>กำลังนำเข้า...</>
+                      ) : (
+                        <>
+                          <Check size={16} />
+                          นำเข้า {inventoryExcelData.length} รายการ
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal เพิ่มจำนวนของ */}
+            {addStockModalOpen && selectedItem && (
+              <div className={styles.modalOverlay}>
+                <div className={styles.modalContent} style={{ maxWidth: '450px' }}>
+                  <div className={styles.modalHeader}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Package size={20} color="#4361ee" />
+                        เพิ่มจำนวนของ
+                      </h3>
+                      <p style={{ color: '#868e96', fontSize: '14px', margin: '4px 0 0' }}>
+                        {selectedItem.name}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setAddStockModalOpen(false); setSelectedItem(null); setAddQuantity(0); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                    >
+                      <X size={20} color="#868e96" />
+                    </button>
+                  </div>
+
+                  <div style={{ padding: '24px' }}>
+                    <div style={{ backgroundColor: '#f8f9fa', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#868e96', fontSize: '14px' }}>จำนวนปัจจุบัน</span>
+                        <span style={{ fontSize: '24px', fontWeight: '700', color: '#495057' }}>
+                          {selectedItem.quantity} <span style={{ fontSize: '14px', fontWeight: '400', color: '#868e96' }}>{selectedItem.unit}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: '#495057' }}>
+                        จำนวนที่ต้องการเพิ่ม
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={addQuantity || ''}
+                        onChange={(e) => setAddQuantity(parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          fontSize: '18px',
+                          fontWeight: '600',
+                          border: '2px solid #e9ecef',
+                          borderRadius: '10px',
+                          textAlign: 'center',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    {addQuantity > 0 && (
+                      <div style={{ backgroundColor: '#e7f5ff', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: '#1971c2', fontSize: '14px' }}>จำนวนหลังเพิ่ม</span>
+                          <span style={{ fontSize: '18px', fontWeight: '700', color: '#1971c2' }}>
+                            {selectedItem.quantity + addQuantity} {selectedItem.unit}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '16px 24px', borderTop: '1px solid #e9ecef', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setAddStockModalOpen(false); setSelectedItem(null); setAddQuantity(0); }}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#f8f9fa',
+                        color: '#495057',
+                        border: '1px solid #dee2e6',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleAddStock}
+                      disabled={addQuantity <= 0 || isAddingStock}
+                      style={{
+                        padding: '10px 24px',
+                        backgroundColor: addQuantity <= 0 ? '#adb5bd' : '#4361ee',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: addQuantity <= 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      {isAddingStock ? (
+                        <>กำลังเพิ่ม...</>
+                      ) : (
+                        <>
+                          <Check size={16} />
+                          เพิ่มจำนวน
                         </>
                       )}
                     </button>

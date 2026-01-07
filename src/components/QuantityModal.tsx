@@ -51,9 +51,14 @@ export default function QuantityModal({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value);
-        // Allow any positive number to be entered, validation happens on confirm
-        if (!isNaN(value) && value >= 1) {
-            setQuantity(value);
+        // Prevent negative numbers and zero
+        if (!isNaN(value)) {
+            if (value >= 1) {
+                setQuantity(value);
+            } else {
+                // If user tries to enter 0 or negative, set to 1
+                setQuantity(1);
+            }
         } else if (e.target.value === '') {
             setQuantity(1);
         }
@@ -109,6 +114,12 @@ export default function QuantityModal({
                                 className={`${styles.quantityInput} ${quantity > maxAvailable ? styles.quantityInputError : ''}`}
                                 value={quantity}
                                 onChange={handleInputChange}
+                                onKeyDown={(e) => {
+                                    // Prevent typing minus (-), plus (+), dot (.), and 'e' (scientific notation)
+                                    if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                                        e.preventDefault();
+                                    }
+                                }}
                                 min={1}
                             />
                             <button

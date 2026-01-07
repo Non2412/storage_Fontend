@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   // Edit Request Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Request | null>(null);
-  const [editedQuantities, setEditedQuantities] = useState<{[itemId: string]: number}>({});
+  const [editedQuantities, setEditedQuantities] = useState<{ [itemId: string]: number }>({});
 
   // Excel Upload Modal State (Shelters)
   const [excelModalOpen, setExcelModalOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
 
   // Add Stock Modal State
   const [addStockModalOpen, setAddStockModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{id: string; name: string; quantity: number; unit: string} | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ id: string; name: string; quantity: number; unit: string } | null>(null);
   const [addQuantity, setAddQuantity] = useState(0);
   const [isAddingStock, setIsAddingStock] = useState(false);
 
@@ -229,7 +229,7 @@ export default function AdminDashboard() {
   // เปิด Modal แก้ไขจำนวน
   const handleOpenEditModal = async (request: Request) => {
     // ตั้งค่า quantities เริ่มต้นจากที่ขอมา
-    const initialQuantities: {[itemId: string]: number} = {};
+    const initialQuantities: { [itemId: string]: number } = {};
     request.items.forEach(item => {
       const itemId = typeof item.itemId === 'object' ? item.itemId._id : item.itemId;
       initialQuantities[itemId] = item.quantityRequested;
@@ -489,7 +489,7 @@ export default function AdminDashboard() {
 
     setExcelFileName(file.name);
     const reader = new FileReader();
-    
+
     reader.onload = (event) => {
       try {
         const data = event.target?.result;
@@ -497,7 +497,7 @@ export default function AdminDashboard() {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
+
         // Map column names to our format
         const mappedData = jsonData.map((row: any, index: number) => ({
           id: index + 1,
@@ -510,14 +510,14 @@ export default function AdminDashboard() {
           phone: row['เบอร์โทร'] || row['phone'] || row['โทรศัพท์'] || '',
           contactName: row['ผู้ติดต่อ'] || row['contactName'] || ''
         })).filter((item: any) => item.name); // กรองเฉพาะที่มีชื่อ
-        
+
         setExcelData(mappedData);
       } catch (error) {
         console.error('Error reading Excel:', error);
         alert('ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์');
       }
     };
-    
+
     reader.readAsBinaryString(file);
   };
 
@@ -705,7 +705,7 @@ export default function AdminDashboard() {
       // ดึง stock จริงของ warehouse นี้ก่อน
       const stockResult = await getStockStatus(warehouseId);
       let currentStockInWarehouse = 0;
-      
+
       if (stockResult.success && stockResult.data?.items) {
         const stockItem = stockResult.data.items.find(
           (s: any) => s.itemId === selectedItem.id || s.itemId?._id === selectedItem.id
@@ -1198,8 +1198,8 @@ export default function AdminDashboard() {
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button
                               onClick={() => handleOpenEditModal(req)}
-                              style={{ 
-                                padding: '4px 8px', 
+                              style={{
+                                padding: '4px 8px',
                                 fontSize: '12px',
                                 backgroundColor: '#fff3bf',
                                 color: '#e67700',
@@ -1216,8 +1216,8 @@ export default function AdminDashboard() {
                             </button>
                             <button
                               onClick={() => handleReject(req._id)}
-                              style={{ 
-                                padding: '6px 14px', 
+                              style={{
+                                padding: '6px 14px',
                                 fontSize: '12px',
                                 backgroundColor: '#fff5f5',
                                 color: '#fa5252',
@@ -1311,11 +1311,11 @@ export default function AdminDashboard() {
                     <div className={styles.chartHeader}>
                       <h3 className={styles.chartTitle}>ภาพรวมศูนย์พักพิง</h3>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                          onClick={() => setExcelModalOpen(true)} 
-                          style={{ 
-                            width: 'auto', 
-                            fontSize: '12px', 
+                        <button
+                          onClick={() => setExcelModalOpen(true)}
+                          style={{
+                            width: 'auto',
+                            fontSize: '12px',
                             padding: '6px 12px',
                             backgroundColor: '#40c057',
                             color: 'white',
@@ -1353,56 +1353,56 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '350px', overflowY: 'auto' }}>
                       {shelters
-                        .filter((shelter: any) => 
-                          shelter.name.toLowerCase().includes(overviewShelterSearch.toLowerCase()) || 
+                        .filter((shelter: any) =>
+                          shelter.name.toLowerCase().includes(overviewShelterSearch.toLowerCase()) ||
                           shelter.province?.toLowerCase().includes(overviewShelterSearch.toLowerCase())
                         )
                         .slice(0, 10).map((shelter: any) => {
-                        const statusColor = shelter.status === 'full' ? '#fa5252' : shelter.status === 'nearly_full' ? '#fab005' : '#40c057';
-                        
-                        return (
-                          <div key={shelter._id} className={styles.requestItem} style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                              <div style={{ 
-                                width: '36px', 
-                                height: '36px', 
-                                borderRadius: '8px', 
-                                backgroundColor: `${statusColor}15`, 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center' 
-                              }}>
-                                <Home size={18} style={{ color: statusColor }} />
+                          const statusColor = shelter.status === 'full' ? '#fa5252' : shelter.status === 'nearly_full' ? '#fab005' : '#40c057';
+
+                          return (
+                            <div key={shelter._id} className={styles.requestItem} style={{ padding: '10px 12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                                <div style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '8px',
+                                  backgroundColor: `${statusColor}15`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}>
+                                  <Home size={18} style={{ color: statusColor }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{shelter.name}</div>
+                                  <div style={{ fontSize: '11px', color: '#868e96' }}>{shelter.province || 'ไม่ระบุจังหวัด'}</div>
+                                </div>
                               </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{shelter.name}</div>
-                                <div style={{ fontSize: '11px', color: '#868e96' }}>{shelter.province || 'ไม่ระบุจังหวัด'}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontWeight: '700', fontSize: '14px', color: statusColor }}>{shelter.currentPeople}/{shelter.capacity}</div>
+                                  <div style={{ fontSize: '11px', color: '#868e96' }}>คน</div>
+                                </div>
+                                <span className={`${styles.statusBadge} ${shelter.status === 'full' ? styles.badgeCritical : shelter.status === 'nearly_full' ? styles.badgeWarning : styles.badgeNormal}`} style={{ minWidth: '55px', justifyContent: 'center' }}>
+                                  {shelter.status === 'full' ? 'เต็ม' : shelter.status === 'nearly_full' ? 'ใกล้เต็ม' : 'ปกติ'}
+                                </span>
                               </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontWeight: '700', fontSize: '14px', color: statusColor }}>{shelter.currentPeople}/{shelter.capacity}</div>
-                                <div style={{ fontSize: '11px', color: '#868e96' }}>คน</div>
-                              </div>
-                              <span className={`${styles.statusBadge} ${shelter.status === 'full' ? styles.badgeCritical : shelter.status === 'nearly_full' ? styles.badgeWarning : styles.badgeNormal}`} style={{ minWidth: '55px', justifyContent: 'center' }}>
-                                {shelter.status === 'full' ? 'เต็ม' : shelter.status === 'nearly_full' ? 'ใกล้เต็ม' : 'ปกติ'}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                       {shelters.length === 0 && (
                         <div style={{ textAlign: 'center', color: '#868e96', padding: '20px' }}>ไม่มีข้อมูลศูนย์พักพิง</div>
                       )}
                       {shelters.filter((s: any) => s.name.toLowerCase().includes(overviewShelterSearch.toLowerCase()) || s.province?.toLowerCase().includes(overviewShelterSearch.toLowerCase())).length > 10 && (
                         <div style={{ textAlign: 'center', padding: '8px' }}>
-                          <button 
-                            onClick={() => setActiveTab('shelters')} 
-                            style={{ 
-                              color: '#4361ee', 
-                              background: 'none', 
-                              border: 'none', 
-                              cursor: 'pointer', 
+                          <button
+                            onClick={() => setActiveTab('shelters')}
+                            style={{
+                              color: '#4361ee',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
                               fontSize: '13px',
                               fontWeight: '500'
                             }}
@@ -1419,11 +1419,11 @@ export default function AdminDashboard() {
                     <div className={styles.chartHeader}>
                       <h3 className={styles.chartTitle}>ภาพรวมคลังสิ่งของ</h3>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                          onClick={() => setInventoryExcelModalOpen(true)} 
-                          style={{ 
-                            width: 'auto', 
-                            fontSize: '12px', 
+                        <button
+                          onClick={() => setInventoryExcelModalOpen(true)}
+                          style={{
+                            width: 'auto',
+                            fontSize: '12px',
                             padding: '6px 12px',
                             backgroundColor: '#40c057',
                             color: 'white',
@@ -1463,76 +1463,76 @@ export default function AdminDashboard() {
                       {adminInventoryItems
                         .filter(item => item.name.toLowerCase().includes(overviewInventorySearch.toLowerCase()) || item.categoryLabel.toLowerCase().includes(overviewInventorySearch.toLowerCase()))
                         .slice(0, 10).map((item) => {
-                        const percentage = (item.quantity / item.maxQuantity) * 100;
-                        const status = item.quantity === 0 ? 'หมด' : percentage <= 30 ? 'ใกล้หมด' : 'มี';
-                        const statusColor = item.quantity === 0 ? '#fa5252' : percentage <= 30 ? '#fab005' : '#40c057';
-                        
-                        return (
-                          <div key={item.id} className={styles.requestItem} style={{ padding: '10px 12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                              <div style={{ 
-                                width: '36px', 
-                                height: '36px', 
-                                borderRadius: '8px', 
-                                backgroundColor: `${statusColor}15`, 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center' 
-                              }}>
-                                <Package size={18} style={{ color: statusColor }} />
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{item.name}</div>
-                                <div style={{ fontSize: '11px', color: '#868e96' }}>{item.categoryLabel}</div>
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontWeight: '700', fontSize: '14px', color: statusColor }}>{item.quantity.toLocaleString()}</div>
-                                <div style={{ fontSize: '11px', color: '#868e96' }}>{item.unit}</div>
-                              </div>
-                              <span className={`${styles.statusBadge} ${status === 'หมด' ? styles.badgeCritical : status === 'ใกล้หมด' ? styles.badgeWarning : styles.badgeNormal}`} style={{ minWidth: '55px', justifyContent: 'center' }}>
-                                {status}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  setSelectedItem({ id: item.id, name: item.name, quantity: item.quantity, unit: item.unit });
-                                  setAddQuantity(0);
-                                  setAddStockModalOpen(true);
-                                }}
-                                style={{
-                                  padding: '6px 10px',
-                                  backgroundColor: '#4361ee',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
+                          const percentage = (item.quantity / item.maxQuantity) * 100;
+                          const status = item.quantity === 0 ? 'หมด' : percentage <= 30 ? 'ใกล้หมด' : 'มี';
+                          const statusColor = item.quantity === 0 ? '#fa5252' : percentage <= 30 ? '#fab005' : '#40c057';
+
+                          return (
+                            <div key={item.id} className={styles.requestItem} style={{ padding: '10px 12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                                <div style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '8px',
+                                  backgroundColor: `${statusColor}15`,
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '4px'
-                                }}
-                                title="เพิ่มจำนวน"
-                              >
-                                + เพิ่ม
-                              </button>
+                                  justifyContent: 'center'
+                                }}>
+                                  <Package size={18} style={{ color: statusColor }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{item.name}</div>
+                                  <div style={{ fontSize: '11px', color: '#868e96' }}>{item.categoryLabel}</div>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontWeight: '700', fontSize: '14px', color: statusColor }}>{item.quantity.toLocaleString()}</div>
+                                  <div style={{ fontSize: '11px', color: '#868e96' }}>{item.unit}</div>
+                                </div>
+                                <span className={`${styles.statusBadge} ${status === 'หมด' ? styles.badgeCritical : status === 'ใกล้หมด' ? styles.badgeWarning : styles.badgeNormal}`} style={{ minWidth: '55px', justifyContent: 'center' }}>
+                                  {status}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setSelectedItem({ id: item.id, name: item.name, quantity: item.quantity, unit: item.unit });
+                                    setAddQuantity(0);
+                                    setAddStockModalOpen(true);
+                                  }}
+                                  style={{
+                                    padding: '6px 10px',
+                                    backgroundColor: '#4361ee',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="เพิ่มจำนวน"
+                                >
+                                  + เพิ่ม
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                       {adminInventoryItems.length === 0 && (
                         <div style={{ textAlign: 'center', color: '#868e96', padding: '20px' }}>กำลังโหลดข้อมูลคลัง...</div>
                       )}
                       {adminInventoryItems.length > 10 && (
                         <div style={{ textAlign: 'center', padding: '8px' }}>
-                          <button 
-                            onClick={() => setActiveTab('inventory')} 
-                            style={{ 
-                              color: '#4361ee', 
-                              background: 'none', 
-                              border: 'none', 
-                              cursor: 'pointer', 
+                          <button
+                            onClick={() => setActiveTab('inventory')}
+                            style={{
+                              color: '#4361ee',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
                               fontSize: '13px',
                               fontWeight: '500'
                             }}
@@ -1577,9 +1577,9 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td style={{ color: '#868e96', fontSize: '13px' }}>
-                              {new Date(req.updatedAt || req.createdAt).toLocaleDateString('th-TH', { 
-                                day: '2-digit', 
-                                month: 'short', 
+                              {new Date(req.updatedAt || req.createdAt).toLocaleDateString('th-TH', {
+                                day: '2-digit',
+                                month: 'short',
                                 year: 'numeric',
                                 hour: '2-digit',
                                 minute: '2-digit'
@@ -2393,8 +2393,8 @@ export default function AdminDashboard() {
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                   onClick={() => handleOpenEditModal(req)}
-                                  style={{ 
-                                    padding: '6px 10px', 
+                                  style={{
+                                    padding: '6px 10px',
                                     fontSize: '13px',
                                     backgroundColor: '#fff3bf',
                                     color: '#e67700',
@@ -2411,8 +2411,8 @@ export default function AdminDashboard() {
                                 </button>
                                 <button
                                   onClick={() => handleReject(req._id)}
-                                  style={{ 
-                                    padding: '6px 12px', 
+                                  style={{
+                                    padding: '6px 12px',
                                     fontSize: '13px',
                                     backgroundColor: '#fff5f5',
                                     color: '#fa5252',
@@ -2592,6 +2592,11 @@ export default function AdminDashboard() {
                                   max={item.quantityRequested * 2}
                                   value={editedQuantities[itemId] || item.quantityRequested}
                                   onChange={(e) => handleQuantityChange(itemId, parseInt(e.target.value) || 1)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                                      e.preventDefault();
+                                    }
+                                  }}
                                   style={{
                                     width: '80px',
                                     padding: '8px 12px',
@@ -2980,6 +2985,11 @@ export default function AdminDashboard() {
                         min="1"
                         value={addQuantity || ''}
                         onChange={(e) => setAddQuantity(parseInt(e.target.value) || 0)}
+                        onKeyDown={(e) => {
+                          if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault();
+                          }
+                        }}
                         placeholder="0"
                         style={{
                           width: '100%',

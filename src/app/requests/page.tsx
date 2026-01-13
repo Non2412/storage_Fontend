@@ -155,7 +155,7 @@ export default function RequestsPage() {
                 loadRequests(); // Reload
             } else {
                 // แสดง error message ที่ชัดเจน
-                const errorMsg = result.message || result.error || 'ไม่สามารถยกเลิกคำร้องที่ไม่ใช่สถานะรอดำเนินการได้';
+                const errorMsg = result.message || 'ไม่สามารถยกเลิกคำร้องที่ไม่ใช่สถานะรอดำเนินการได้';
                 alert('ไม่สามารถยกเลิกได้: ' + errorMsg);
             }
         } catch (error) {

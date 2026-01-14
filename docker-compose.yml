@@ -11,3 +11,28 @@ services:
     environment:
       - NODE_ENV=production
     restart: always
+
+  backend:
+    container_name: storage-backend
+    build:
+      context: ./storage_backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/storage_db
+      - JWT_SECRET=supersecretkey
+    restart: always
+
+  mongo:
+    container_name: storage-mongo
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+volumes:
+  mongo_data:
